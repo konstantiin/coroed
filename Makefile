@@ -1,12 +1,11 @@
-CC        = clang
-CFLAGS    = -Wall -Werror -I source
-LDFLAGS   = 
-
 SRC_DIR   = source
-
 BUILD_DIR = build
 OBJ_DIR   = $(BUILD_DIR)/obj
 BIN_DIR   = $(BUILD_DIR)/bin
+
+CC        = clang
+CFLAGS    = -g -O0 -I $(SRC_DIR) -Wall -Werror
+LDFLAGS   = 
 
 SRCS     := $(wildcard $(SRC_DIR)/*.c) $(wildcard $(SRC_DIR)/*.S)
 

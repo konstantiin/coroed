@@ -2,22 +2,24 @@
 
 #include <assert.h>
 #include <signal.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <threads.h>
+#include <time.h>
 #include <unistd.h>
 
+#include "clock.h"
 #include "thread.h"
 
-#define THREAD_COUNT_LIMIT 64
+#define THREAD_COUNT_LIMIT 8
 
-static struct thread* threads[THREAD_COUNT_LIMIT];
-static int threads_count = 0;
+static struct thread* threads[THREAD_COUNT_LIMIT] = {NULL};
 
-static thread_local struct thread* shed_thread;
-static thread_local struct thread* curr_thread;
+static thread_local struct thread* shed_thread = NULL;
+static thread_local struct thread* curr_thread = NULL;
 
 static void shed_interrupt(int signo);
 
@@ -38,31 +40,52 @@ static void shed_interrupt(int signo) {
 }
 
 void shed_routine() {
-  int current_thread = 0;
+  struct thread shed = {
+      .context = NULL,
+      .stack_size = 0,
+  };
 
-  struct thread shed;
   shed_thread = &shed;
 
   for (;;) {
-    if (threads_count == 0) {
-      continue;
+    for (size_t i = 0; i < THREAD_COUNT_LIMIT; ++i) {
+      struct thread* thread = threads[i];
+      if (thread == NULL || thread_ip(thread) == NULL) {
+        continue;
+      }
+
+      alarm(1);
+
+      curr_thread = thread;
+      thread_switch(shed_thread, curr_thread);
     }
-
-    curr_thread = threads[current_thread++ % threads_count];
-
-    alarm(1);
-
-    thread_switch(shed_thread, curr_thread);
   }
 }
 
 void shed_run(void (*entry)()) {
   const size_t default_stack_size = 16384;
-  threads[threads_count++] = thread_create(default_stack_size, entry);
+
+  for (size_t i = 0; i < THREAD_COUNT_LIMIT; ++i) {
+    if (threads[i] == NULL) {
+      threads[i] = thread_allocate(default_stack_size);
+      assert(threads[i] != NULL);
+    }
+
+    if (thread_ip(threads[i]) == NULL) {
+      thread_reset(threads[i], entry);
+      return;
+    }
+  }
+
+  printf("Threads exhausted");
+  exit(1);
 }
 
 void shed_destroy() {
-  for (int i = 0; i < threads_count; ++i) {
-    free(threads[i]);
+  for (size_t i = 0; i < THREAD_COUNT_LIMIT; ++i) {
+    struct thread* thread = threads[i];
+    if (thread != NULL) {
+      free(thread);
+    }
   }
 }
