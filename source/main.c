@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <signal.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -23,9 +24,9 @@ struct thread {
   void* context;
 };
 
-void switch_threads(struct thread* from, struct thread* to) {
+void switch_threads(struct thread* prev, struct thread* next) {
   void __switch_threads(void** prev, void* next);
-  __switch_threads(&from->context, to->context);
+  __switch_threads(&prev->context, next->context);
 }
 
 struct thread* __create_thread(size_t stack_size, void (*entry)()) {
@@ -33,8 +34,9 @@ struct thread* __create_thread(size_t stack_size, void (*entry)()) {
   struct switch_frame frame;
   struct thread* thread = (struct thread*)malloc(size);
 
-  if (!thread)
+  if (!thread) {
     return thread;
+  }
 
   memset(&frame, 0, sizeof(frame));
   frame.rip = (uint64_t)entry;
@@ -57,6 +59,8 @@ static struct thread* thread[2];
 static int current_thread;
 
 static void interrupt(int signo) {
+  assert(signo == SIGALRM);
+
   struct thread* prev = thread[current_thread++ % 2];
   struct thread* next = thread[current_thread % 2];
 
@@ -66,7 +70,7 @@ static void interrupt(int signo) {
 }
 
 static unsigned long long timespec2ms(const struct timespec* spec) {
-  return (unsigned long long)spec->tv_sec * 1000 + spec->tv_sec / 1000000;
+  return (unsigned long long)spec->tv_sec * 1000 + spec->tv_sec / (1000 * 1000);
 }
 
 static unsigned long long now() {
@@ -76,23 +80,23 @@ static unsigned long long now() {
   return timespec2ms(&spec);
 }
 
-static void delay(unsigned long long ms) {
+static void delay(unsigned long long milliseconds) {
   const unsigned long long start = now();
 
-  while (now() - start < ms) {
+  while (now() - start < milliseconds) {
     // Do nothing
   }
 }
 
 static void thread_entry1() {
-  while (1) {
+  for (;;) {
     printf("In thread 1\n");
     delay(200);
   }
 }
 
 static void thread_entry2() {
-  while (1) {
+  for (;;) {
     printf("In thread 2\n");
     delay(200);
   }
@@ -111,10 +115,10 @@ int main() {
   /* Start timer and kick off threading */
   alarm(1);
 
-  struct thread th;
-  switch_threads(&th, thread[0]);
+  struct thread this;
+  switch_threads(&this, thread[0]);
 
-  while (1) {
+  for (;;) {
     // Do nothing
   }
 
