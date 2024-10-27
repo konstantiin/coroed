@@ -3,6 +3,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+// TODO: make stack size constant and rely on it
+// TODO: rename to uthread
 struct thread {
   void* context;
   size_t stack_size;

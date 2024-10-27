@@ -26,6 +26,8 @@ static void shed_interrupt(int signo) {
   thread_switch(curr_thread, shed_thread);
 }
 
+static struct thread* sched_next();
+
 void shed_start() {
   /* Setup an "interrupt" handler */
   struct sigaction action;
@@ -39,18 +41,25 @@ void shed_start() {
 
   /* Event loop */
   for (;;) {
-    for (size_t i = 0; i < THREAD_COUNT_LIMIT; ++i) {
-      struct thread* thread = threads[i];
-      if (thread == NULL || thread_ip(thread) == NULL) {
-        continue;
-      }
+    struct thread* thread = sched_next();
+    alarm(1);
+    curr_thread = thread;
+    thread_switch(shed_thread, curr_thread);
+  }
+}
 
-      alarm(1);
-
-      curr_thread = thread;
-      thread_switch(shed_thread, curr_thread);
+static struct thread* sched_next() {
+  static size_t curr_index = 0;
+  for (size_t i = 0; i < THREAD_COUNT_LIMIT; ++i) {
+    struct thread* thread = threads[curr_index];
+    curr_index = (curr_index + 1) % THREAD_COUNT_LIMIT;
+    if (thread != NULL && thread_ip(thread) != NULL) {
+      return thread;
     }
   }
+
+  printf("No more threads to run");
+  exit(0);
 }
 
 void shed_submit(void (*entry)()) {
