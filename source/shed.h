@@ -1,9 +1,7 @@
 #pragma once
 
-void shed_init();
+void shed_submit(void (*entry)());
 
-void shed_run(void (*entry)());
-
-void shed_routine();
+void shed_start();
 
 void shed_destroy();

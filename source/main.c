@@ -25,12 +25,8 @@ static void routine2() {
 }
 
 int main() {
-  shed_init();
-
-  shed_run(&routine1);
-  shed_run(&routine2);
-
-  shed_routine();
-
+  shed_submit(&routine1);
+  shed_submit(&routine2);
+  shed_start();
   return 0;
 }

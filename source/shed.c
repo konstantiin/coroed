@@ -11,7 +11,6 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "clock.h"
 #include "thread.h"
 
 #define THREAD_COUNT_LIMIT 8
@@ -21,32 +20,24 @@ static struct thread* threads[THREAD_COUNT_LIMIT] = {NULL};
 static thread_local struct thread* shed_thread = NULL;
 static thread_local struct thread* curr_thread = NULL;
 
-static void shed_interrupt(int signo);
-
-void shed_init() {
-  /* Setup an "interrupt" handler */
-  struct sigaction action;
-  action.sa_handler = &shed_interrupt;
-  action.sa_flags = SA_NODEFER;
-
-  sigaction(SIGALRM, &action, /* oldact = */ NULL);
-}
-
 static void shed_interrupt(int signo) {
   assert(signo == SIGALRM);
-
   printf("interrupt\n");
   thread_switch(curr_thread, shed_thread);
 }
 
-void shed_routine() {
-  struct thread shed = {
-      .context = NULL,
-      .stack_size = 0,
-  };
+void shed_start() {
+  /* Setup an "interrupt" handler */
+  struct sigaction action;
+  action.sa_handler = &shed_interrupt;
+  action.sa_flags = SA_NODEFER;
+  sigaction(SIGALRM, &action, /* oldact = */ NULL);
 
+  /* Setup shed thread */
+  struct thread shed = {.context = NULL, .stack_size = 0};
   shed_thread = &shed;
 
+  /* Event loop */
   for (;;) {
     for (size_t i = 0; i < THREAD_COUNT_LIMIT; ++i) {
       struct thread* thread = threads[i];
@@ -62,7 +53,7 @@ void shed_routine() {
   }
 }
 
-void shed_run(void (*entry)()) {
+void shed_submit(void (*entry)()) {
   const size_t default_stack_size = 16384;
 
   for (size_t i = 0; i < THREAD_COUNT_LIMIT; ++i) {
