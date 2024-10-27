@@ -1,129 +1,36 @@
 #include <assert.h>
-#include <signal.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
 #include <unistd.h>
 
-struct [[gnu::packed]] switch_frame {
-  uint64_t rflags;
-  uint64_t r15;
-  uint64_t r14;
-  uint64_t r13;
-  uint64_t r12;
-  uint64_t rbp;
-  uint64_t rbx;
-  uint64_t rip;
-};
+#include "clock.h"
+#include "shed.h"
 
-struct thread {
-  void* context;
-};
+#define DELAY 200
 
-void switch_threads(struct thread* prev, struct thread* next) {
-  void __switch_threads(void** prev, void* next);
-  __switch_threads(&prev->context, next->context);
-}
-
-struct thread* __create_thread(size_t stack_size, void (*entry)()) {
-  const size_t size = stack_size + sizeof(struct thread);
-  struct switch_frame frame;
-  struct thread* thread = (struct thread*)malloc(size);
-
-  if (!thread) {
-    return thread;
-  }
-
-  memset(&frame, 0, sizeof(frame));
-  frame.rip = (uint64_t)entry;
-
-  thread->context = (uint8_t*)thread + size - sizeof(frame);
-  memcpy(thread->context, &frame, sizeof(frame));
-  return thread;
-}
-
-struct thread* create_thread(void (*entry)()) {
-  const size_t default_stack_size = 16384;
-  return __create_thread(default_stack_size, entry);
-}
-
-void destroy_thread(struct thread* thread) {
-  free(thread);
-}
-
-static struct thread* thread[2];
-static int current_thread;
-
-static void interrupt(int signo) {
-  assert(signo == SIGALRM);
-
-  struct thread* prev = thread[current_thread++ % 2];
-  struct thread* next = thread[current_thread % 2];
-
-  alarm(1);
-  printf("interrupt\n");
-  switch_threads(prev, next);
-}
-
-static unsigned long long timespec2ms(const struct timespec* spec) {
-  return (unsigned long long)spec->tv_sec * 1000 + spec->tv_sec / (1000 * 1000);
-}
-
-static unsigned long long now() {
-  struct timespec spec;
-
-  clock_gettime(CLOCK_MONOTONIC, &spec);
-  return timespec2ms(&spec);
-}
-
-static void delay(unsigned long long milliseconds) {
-  const unsigned long long start = now();
-
-  while (now() - start < milliseconds) {
-    // Do nothing
-  }
-}
-
-static void thread_entry1() {
+static void routine1() {
   for (;;) {
-    printf("In thread 1\n");
-    delay(200);
+    printf("In routine 1\n");
+    clock_delay(DELAY);
   }
 }
 
-static void thread_entry2() {
+static void routine2() {
   for (;;) {
-    printf("In thread 2\n");
-    delay(200);
+    printf("In routine 2\n");
+    clock_delay(DELAY);
   }
 }
 
 int main() {
-  /* Setup an "interrupt" handler */
-  struct sigaction action;
-  action.sa_handler = &interrupt;
-  action.sa_flags = SA_NODEFER;
-  sigaction(SIGALRM, &action, NULL);
+  shed_init();
 
-  thread[0] = create_thread(&thread_entry1);
-  thread[1] = create_thread(&thread_entry2);
+  shed_run(&routine1);
+  shed_run(&routine2);
 
-  /* Start timer and kick off threading */
-  alarm(1);
-
-  struct thread this;
-  switch_threads(&this, thread[0]);
-
-  for (;;) {
-    // Do nothing
-  }
-
-  destroy_thread(thread[2]);
-  destroy_thread(thread[1]);
+  shed_routine();
 
   return 0;
 }
