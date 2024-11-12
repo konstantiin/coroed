@@ -11,8 +11,6 @@
 
 #define DELAY 100
 
-DECLARE_TASK(print_loop, const char, message);
-
 DEFINE_TASK(print_loop, const char, message) {
   for (;;) {
     printf("%s", message);

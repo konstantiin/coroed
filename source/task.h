@@ -8,6 +8,7 @@
   void name()
 
 #define DEFINE_TASK(name, type, argument)                         \
+  DECLARE_TASK(name, type, argument);                             \
   void name() {                                                   \
     type* __argument = (type*)(uthread_argument(shed_current())); \
     task_body_##name(__argument);                                 \
