@@ -7,7 +7,7 @@
 #include <unistd.h>
 
 #include "clock.h"
-#include "shed.h"
+#include "sched.h"
 #include "task.h"
 
 #define DELAY 500
@@ -17,16 +17,16 @@ DEFINE_TASK(print_loop, const char, message) {
   const int delay = atoi(message) * DELAY;  // NOLINT
   for (int i = 0; i < COUNT; ++i) {
     printf("%s", message);
-    shed_yield();
+    sched_yield();
     clock_delay(delay);
   }
 }
 
 int main() {
-  shed_submit(&print_loop, "1");
-  shed_submit(&print_loop, "2");
-  shed_submit(&print_loop, "3");
-  shed_start();
-  shed_destroy();
+  sched_submit(&print_loop, "1");
+  sched_submit(&print_loop, "2");
+  sched_submit(&print_loop, "3");
+  sched_start();
+  sched_destroy();
   return 0;
 }

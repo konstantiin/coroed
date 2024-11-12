@@ -1,4 +1,4 @@
-#include "shed.h"
+#include "sched.h"
 
 #include <assert.h>
 #include <signal.h>
@@ -17,44 +17,44 @@
 
 struct uthread* threads[THREAD_COUNT_LIMIT] = {NULL};
 
-thread_local struct uthread* shed_thread = NULL;
+thread_local struct uthread* sched_thread = NULL;
 thread_local struct uthread* curr_thread = NULL;
 
-void shed_switch_to_scheduler() {
-  uthread_switch(curr_thread, shed_thread);
+void sched_switch_to_scheduler() {
+  uthread_switch(curr_thread, sched_thread);
 }
 
-void shed_switch_to(struct uthread* thread) {
-  assert(thread != shed_thread);
+void sched_switch_to(struct uthread* thread) {
+  assert(thread != sched_thread);
   curr_thread = thread;
-  uthread_switch(shed_thread, curr_thread);
+  uthread_switch(sched_thread, curr_thread);
 }
 
-void shed_interrupt_on() {
+void sched_interrupt_on() {
   alarm(1);
 }
 
-void shed_interrupt_off() {
+void sched_interrupt_off() {
   alarm(0);
 }
 
-void shed_interrupt(int signo) {
+void sched_interrupt(int signo) {
   assert(signo == SIGALRM);
-  shed_switch_to_scheduler();
+  sched_switch_to_scheduler();
 }
 
 struct uthread* sched_next();
 
-void shed_start() {
+void sched_start() {
   /* Setup an "interrupt" handler */
   struct sigaction action;
-  action.sa_handler = &shed_interrupt;
+  action.sa_handler = &sched_interrupt;
   action.sa_flags = SA_NODEFER;
   sigaction(SIGALRM, &action, /* oldact = */ NULL);
 
-  /* Setup shed thread */
-  struct uthread shed = {.context = NULL};
-  shed_thread = &shed;
+  /* Setup sched thread */
+  struct uthread sched = {.context = NULL};
+  sched_thread = &sched;
 
   /* Event loop */
   for (;;) {
@@ -65,8 +65,8 @@ void shed_start() {
 
     thread->state = UTHREAD_RUNNING;
 
-    shed_interrupt_on();
-    shed_switch_to(thread);
+    sched_interrupt_on();
+    sched_switch_to(thread);
 
     printf(" ");
     fflush(stdout);  // NOLINT
@@ -94,11 +94,11 @@ struct uthread* sched_next() {
   return NULL;
 }
 
-struct uthread* shed_current() {
+struct uthread* sched_current() {
   return curr_thread;
 }
 
-void shed_submit(void (*entry)(), void* argument) {
+void sched_submit(void (*entry)(), void* argument) {
   for (size_t i = 0; i < THREAD_COUNT_LIMIT; ++i) {
     if (threads[i] == NULL) {
       threads[i] = uthread_allocate();
@@ -117,21 +117,21 @@ void shed_submit(void (*entry)(), void* argument) {
   exit(1);
 }
 
-void shed_cancel(struct uthread* thread) {
+void sched_cancel(struct uthread* thread) {
   thread->state = UTHREAD_CANCELLED;
 }
 
-void shed_yield() {
-  shed_interrupt_off();
-  shed_switch_to_scheduler();
+void sched_yield() {
+  sched_interrupt_off();
+  sched_switch_to_scheduler();
 }
 
-void shed_exit() {
-  shed_cancel(shed_current());
-  shed_yield();
+void sched_exit() {
+  sched_cancel(sched_current());
+  sched_yield();
 }
 
-void shed_destroy() {
+void sched_destroy() {
   for (size_t i = 0; i < THREAD_COUNT_LIMIT; ++i) {
     struct uthread* thread = threads[i];
     if (thread != NULL) {

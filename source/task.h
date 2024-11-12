@@ -1,6 +1,6 @@
 #pragma once
 
-#include "shed.h"
+#include "sched.h"
 #include "uthread.h"
 
 #define DECLARE_TASK(name, type, argument) \
@@ -10,9 +10,9 @@
 #define DEFINE_TASK(name, type, argument)               \
   DECLARE_TASK(name, type, argument);                   \
   void name() {                                         \
-    struct uthread* self = shed_current();              \
+    struct uthread* self = sched_current();              \
     type* __argument = (type*)(uthread_argument(self)); \
     task_body_##name(__argument);                       \
-    shed_exit();                                        \
+    sched_exit();                                        \
   }                                                     \
   void task_body_##name(type* argument)
