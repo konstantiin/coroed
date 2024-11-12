@@ -4,6 +4,14 @@
 >
 > -- Leo Tolstoy, 📖 Russian writer
 
+## Features
+
+- Preemtion
+- Single-threaded executor
+- Stackfull coroutines
+- Platform: x64
+- Zombie-fibers
+
 ## Reference
 
 - [Stackless Coroutines in C by @vityaman](https://github.com/vityaman-edu/c-coroutines)
