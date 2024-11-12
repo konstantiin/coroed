@@ -55,7 +55,7 @@ static struct uthread* sched_next() {
   for (size_t i = 0; i < THREAD_COUNT_LIMIT; ++i) {
     struct uthread* thread = threads[curr_index];
     curr_index = (curr_index + 1) % THREAD_COUNT_LIMIT;
-    if (thread != NULL && uthread_ip(thread) != NULL) {
+    if (thread != NULL && !uthread_is_finished(thread)) {
       return thread;
     }
   }
@@ -69,7 +69,7 @@ void shed_submit(void (*entry)()) {
       assert(threads[i] != NULL);
     }
 
-    if (uthread_ip(threads[i]) == NULL) {
+    if (uthread_is_finished(threads[i])) {
       uthread_reset(threads[i], entry);
       return;
     }

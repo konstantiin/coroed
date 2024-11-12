@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdbool.h>
 #include <stdint.h>
 
 struct uthread {
@@ -14,4 +15,4 @@ struct uthread* uthread_allocate();
 
 void uthread_reset(struct uthread* thread, uthread_routine entry);
 
-void* uthread_ip(struct uthread* thread);
+bool uthread_is_finished(struct uthread* thread);

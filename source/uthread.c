@@ -42,7 +42,7 @@ void uthread_reset(struct uthread* thread, uthread_routine entry) {
   frame->rip = (uint64_t)entry;
 }
 
-void* uthread_ip(struct uthread* thread) {
+bool uthread_is_finished(struct uthread* thread) {
   struct switch_frame* frame = (struct switch_frame*)(thread->context);
-  return (void*)(frame->rip);
+  return (void*)(frame->rip) == NULL;
 }
