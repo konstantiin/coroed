@@ -1,6 +1,9 @@
 #include "thread.h"
 
+#include <stdlib.h>
 #include <string.h>
+
+#define STACK_SIZE 16384
 
 struct [[gnu::packed]] switch_frame {
   uint64_t rflags;
@@ -18,22 +21,21 @@ void thread_switch(struct thread* prev, struct thread* next) {
   __switch_threads(&prev->context, next->context);
 }
 
-struct thread* thread_allocate(size_t stack_size) {
-  const size_t size = stack_size + sizeof(struct thread);
+struct thread* thread_allocate() {
+  const size_t size = STACK_SIZE + sizeof(struct thread);
 
   struct thread* thread = (struct thread*)(malloc(size));
   if (!thread) {
     return NULL;
   }
 
-  thread->stack_size = stack_size;
   thread_reset(thread, NULL);
 
   return thread;
 }
 
 void thread_reset(struct thread* thread, thread_routine entry) {
-  thread->context = (uint8_t*)thread + thread->stack_size - sizeof(struct switch_frame);
+  thread->context = (uint8_t*)thread + STACK_SIZE - sizeof(struct switch_frame);
 
   struct switch_frame* frame = (struct switch_frame*)(thread->context);
   memset(frame, 0, sizeof(struct switch_frame));

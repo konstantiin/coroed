@@ -1,20 +1,17 @@
 #pragma once
 
 #include <stdint.h>
-#include <stdlib.h>
 
-// TODO: make stack size constant and rely on it
 // TODO: rename to uthread
 struct thread {
   void* context;
-  size_t stack_size;
 };
 
 typedef void (*thread_routine)();
 
 void thread_switch(struct thread* prev, struct thread* next);
 
-struct thread* thread_allocate(size_t stack_size);
+struct thread* thread_allocate();
 
 void thread_reset(struct thread* thread, thread_routine entry);
 
