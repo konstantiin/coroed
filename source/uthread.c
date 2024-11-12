@@ -45,10 +45,8 @@ void uthread_reset(struct uthread* thread, uthread_routine entry, void* argument
   memset(frame, 0, sizeof(struct switch_frame));
   frame->rip = (uint64_t)entry;
   frame->r15 = (uint64_t)argument;
-}
 
-bool uthread_is_finished(struct uthread* thread) {
-  return (void*)(uthread_frame(thread)->rip) == NULL;
+  thread->state = UTHREAD_CANCELLED;
 }
 
 void* uthread_argument(struct uthread* thread) {

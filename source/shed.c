@@ -20,11 +20,21 @@ struct uthread* threads[THREAD_COUNT_LIMIT] = {NULL};
 thread_local struct uthread* shed_thread = NULL;
 thread_local struct uthread* curr_thread = NULL;
 
+void shed_switch_to_scheduler() {
+  uthread_switch(curr_thread, shed_thread);
+}
+
+void shed_switch_to(struct uthread* thread) {
+  assert(thread != shed_thread);
+  curr_thread = thread;
+  uthread_switch(shed_thread, curr_thread);
+}
+
 void shed_interrupt(int signo) {
   assert(signo == SIGALRM);
   printf(" ");
   fflush(stdout);  // NOLINT
-  uthread_switch(curr_thread, shed_thread);
+  shed_switch_to_scheduler();
 }
 
 struct uthread* sched_next();
@@ -43,10 +53,23 @@ void shed_start() {
   /* Event loop */
   for (;;) {
     struct uthread* thread = sched_next();
-    assert(thread);
+    if (thread == NULL) {
+      break;
+    }
+
+    thread->state = UTHREAD_RUNNING;
+
     alarm(1);
-    curr_thread = thread;
-    uthread_switch(shed_thread, curr_thread);
+    shed_switch_to(thread);
+
+    if (thread->state == UTHREAD_CANCELLED) {
+      uthread_reset(thread, /* entry = */ NULL, /* argument = */ NULL);
+      thread->state = UTHREAD_ZOMBIE;
+    } else if (thread->state == UTHREAD_RUNNING) {
+      thread->state = UTHREAD_RUNNABLE;
+    } else {
+      assert(false);
+    }
   }
 }
 
@@ -55,7 +78,7 @@ struct uthread* sched_next() {
   for (size_t i = 0; i < THREAD_COUNT_LIMIT; ++i) {
     struct uthread* thread = threads[curr_index];
     curr_index = (curr_index + 1) % THREAD_COUNT_LIMIT;
-    if (thread != NULL && !uthread_is_finished(thread)) {
+    if (thread != NULL && thread->state == UTHREAD_RUNNABLE) {
       return thread;
     }
   }
@@ -71,16 +94,28 @@ void shed_submit(void (*entry)(), void* argument) {
     if (threads[i] == NULL) {
       threads[i] = uthread_allocate();
       assert(threads[i] != NULL);
+      threads[i]->state = UTHREAD_ZOMBIE;
     }
 
-    if (uthread_is_finished(threads[i])) {
+    if (threads[i]->state == UTHREAD_ZOMBIE) {
       uthread_reset(threads[i], entry, argument);
+      threads[i]->state = UTHREAD_RUNNABLE;
       return;
     }
   }
 
   printf("Threads exhausted");
   exit(1);
+}
+
+void shed_cancel(struct uthread* thread) {
+  thread->state = UTHREAD_CANCELLED;
+}
+
+void shed_exit() {
+  shed_cancel(shed_current());
+  alarm(0);
+  shed_switch_to_scheduler();
 }
 
 void shed_destroy() {
