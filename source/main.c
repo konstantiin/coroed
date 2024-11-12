@@ -7,34 +7,23 @@
 
 #include "clock.h"
 #include "shed.h"
+#include "task.h"
 
 #define DELAY 100
 
-static void routine1() {
-  for (;;) {
-    printf("1");
-    clock_delay(DELAY);
-  }
-}
+DECLARE_TASK(print_loop, const char, message);
 
-static void routine2() {
+DEFINE_TASK(print_loop, const char, message) {
   for (;;) {
-    printf("2");
-    clock_delay(DELAY);
-  }
-}
-
-static void routine3() {
-  for (;;) {
-    printf("3");
+    printf("%s", message);
     clock_delay(DELAY);
   }
 }
 
 int main() {
-  shed_submit(&routine1);
-  shed_submit(&routine2);
-  shed_submit(&routine3);
+  shed_submit(&print_loop, "1");
+  shed_submit(&print_loop, "2");
+  shed_submit(&print_loop, "3");
   shed_start();
   return 0;
 }

@@ -15,19 +15,19 @@
 
 #define THREAD_COUNT_LIMIT 8
 
-static struct uthread* threads[THREAD_COUNT_LIMIT] = {NULL};
+struct uthread* threads[THREAD_COUNT_LIMIT] = {NULL};
 
-static thread_local struct uthread* shed_thread = NULL;
-static thread_local struct uthread* curr_thread = NULL;
+thread_local struct uthread* shed_thread = NULL;
+thread_local struct uthread* curr_thread = NULL;
 
-static void shed_interrupt(int signo) {
+void shed_interrupt(int signo) {
   assert(signo == SIGALRM);
   printf(" ");
   fflush(stdout);
   uthread_switch(curr_thread, shed_thread);
 }
 
-static struct uthread* sched_next();
+struct uthread* sched_next();
 
 void shed_start() {
   /* Setup an "interrupt" handler */
@@ -50,7 +50,7 @@ void shed_start() {
   }
 }
 
-static struct uthread* sched_next() {
+struct uthread* sched_next() {
   static size_t curr_index = 0;
   for (size_t i = 0; i < THREAD_COUNT_LIMIT; ++i) {
     struct uthread* thread = threads[curr_index];
@@ -62,7 +62,11 @@ static struct uthread* sched_next() {
   return NULL;
 }
 
-void shed_submit(void (*entry)()) {
+struct uthread* shed_current() {
+  return curr_thread;
+}
+
+void shed_submit(void (*entry)(), void* argument) {
   for (size_t i = 0; i < THREAD_COUNT_LIMIT; ++i) {
     if (threads[i] == NULL) {
       threads[i] = uthread_allocate();
@@ -70,7 +74,7 @@ void shed_submit(void (*entry)()) {
     }
 
     if (uthread_is_finished(threads[i])) {
-      uthread_reset(threads[i], entry);
+      uthread_reset(threads[i], entry, argument);
       return;
     }
   }

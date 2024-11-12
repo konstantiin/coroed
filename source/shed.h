@@ -1,6 +1,10 @@
 #pragma once
 
-void shed_submit(void (*entry)());
+#include <uthread.h>
+
+struct uthread* shed_current();
+
+void shed_submit(uthread_routine entry, void* argument);
 
 void shed_start();
 
