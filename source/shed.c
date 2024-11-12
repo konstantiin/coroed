@@ -23,7 +23,7 @@ thread_local struct uthread* curr_thread = NULL;
 void shed_interrupt(int signo) {
   assert(signo == SIGALRM);
   printf(" ");
-  fflush(stdout);
+  fflush(stdout);  // NOLINT
   uthread_switch(curr_thread, shed_thread);
 }
 
