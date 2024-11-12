@@ -30,6 +30,14 @@ void shed_switch_to(struct uthread* thread) {
   uthread_switch(shed_thread, curr_thread);
 }
 
+void shed_interrupt_on() {
+  alarm(1);
+}
+
+void shed_interrupt_off() {
+  alarm(0);
+}
+
 void shed_interrupt(int signo) {
   assert(signo == SIGALRM);
   shed_switch_to_scheduler();
@@ -57,7 +65,7 @@ void shed_start() {
 
     thread->state = UTHREAD_RUNNING;
 
-    alarm(1);
+    shed_interrupt_on();
     shed_switch_to(thread);
 
     printf(" ");
@@ -114,7 +122,7 @@ void shed_cancel(struct uthread* thread) {
 }
 
 void shed_yield() {
-  alarm(0);
+  shed_interrupt_off();
   shed_switch_to_scheduler();
 }
 
