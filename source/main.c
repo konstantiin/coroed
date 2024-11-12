@@ -8,18 +8,25 @@
 #include "clock.h"
 #include "shed.h"
 
-#define DELAY 200
+#define DELAY 100
 
 static void routine1() {
   for (;;) {
-    printf("In routine 1\n");
+    printf("1");
     clock_delay(DELAY);
   }
 }
 
 static void routine2() {
   for (;;) {
-    printf("In routine 2\n");
+    printf("2");
+    clock_delay(DELAY);
+  }
+}
+
+static void routine3() {
+  for (;;) {
+    printf("3");
     clock_delay(DELAY);
   }
 }
@@ -27,6 +34,7 @@ static void routine2() {
 int main() {
   shed_submit(&routine1);
   shed_submit(&routine2);
+  shed_submit(&routine3);
   shed_start();
   return 0;
 }

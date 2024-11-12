@@ -22,7 +22,8 @@ static thread_local struct thread* curr_thread = NULL;
 
 static void shed_interrupt(int signo) {
   assert(signo == SIGALRM);
-  printf("interrupt\n");
+  printf(" ");
+  fflush(stdout);
   thread_switch(curr_thread, shed_thread);
 }
 
@@ -42,6 +43,7 @@ void shed_start() {
   /* Event loop */
   for (;;) {
     struct thread* thread = sched_next();
+    assert(thread);
     alarm(1);
     curr_thread = thread;
     thread_switch(shed_thread, curr_thread);
@@ -57,9 +59,7 @@ static struct thread* sched_next() {
       return thread;
     }
   }
-
-  printf("No more threads to run");
-  exit(0);
+  return NULL;
 }
 
 void shed_submit(void (*entry)()) {
