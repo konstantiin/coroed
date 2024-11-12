@@ -11,23 +11,23 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "thread.h"
+#include "uthread.h"
 
 #define THREAD_COUNT_LIMIT 8
 
-static struct thread* threads[THREAD_COUNT_LIMIT] = {NULL};
+static struct uthread* threads[THREAD_COUNT_LIMIT] = {NULL};
 
-static thread_local struct thread* shed_thread = NULL;
-static thread_local struct thread* curr_thread = NULL;
+static thread_local struct uthread* shed_thread = NULL;
+static thread_local struct uthread* curr_thread = NULL;
 
 static void shed_interrupt(int signo) {
   assert(signo == SIGALRM);
   printf(" ");
   fflush(stdout);
-  thread_switch(curr_thread, shed_thread);
+  uthread_switch(curr_thread, shed_thread);
 }
 
-static struct thread* sched_next();
+static struct uthread* sched_next();
 
 void shed_start() {
   /* Setup an "interrupt" handler */
@@ -37,25 +37,25 @@ void shed_start() {
   sigaction(SIGALRM, &action, /* oldact = */ NULL);
 
   /* Setup shed thread */
-  struct thread shed = {.context = NULL, .stack_size = 0};
+  struct uthread shed = {.context = NULL};
   shed_thread = &shed;
 
   /* Event loop */
   for (;;) {
-    struct thread* thread = sched_next();
+    struct uthread* thread = sched_next();
     assert(thread);
     alarm(1);
     curr_thread = thread;
-    thread_switch(shed_thread, curr_thread);
+    uthread_switch(shed_thread, curr_thread);
   }
 }
 
-static struct thread* sched_next() {
+static struct uthread* sched_next() {
   static size_t curr_index = 0;
   for (size_t i = 0; i < THREAD_COUNT_LIMIT; ++i) {
-    struct thread* thread = threads[curr_index];
+    struct uthread* thread = threads[curr_index];
     curr_index = (curr_index + 1) % THREAD_COUNT_LIMIT;
-    if (thread != NULL && thread_ip(thread) != NULL) {
+    if (thread != NULL && uthread_ip(thread) != NULL) {
       return thread;
     }
   }
@@ -63,16 +63,14 @@ static struct thread* sched_next() {
 }
 
 void shed_submit(void (*entry)()) {
-  const size_t default_stack_size = 16384;
-
   for (size_t i = 0; i < THREAD_COUNT_LIMIT; ++i) {
     if (threads[i] == NULL) {
-      threads[i] = thread_allocate(default_stack_size);
+      threads[i] = uthread_allocate();
       assert(threads[i] != NULL);
     }
 
-    if (thread_ip(threads[i]) == NULL) {
-      thread_reset(threads[i], entry);
+    if (uthread_ip(threads[i]) == NULL) {
+      uthread_reset(threads[i], entry);
       return;
     }
   }
@@ -83,7 +81,7 @@ void shed_submit(void (*entry)()) {
 
 void shed_destroy() {
   for (size_t i = 0; i < THREAD_COUNT_LIMIT; ++i) {
-    struct thread* thread = threads[i];
+    struct uthread* thread = threads[i];
     if (thread != NULL) {
       free(thread);
     }

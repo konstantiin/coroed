@@ -1,4 +1,4 @@
-#include "thread.h"
+#include "uthread.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -16,25 +16,25 @@ struct [[gnu::packed]] switch_frame {
   uint64_t rip;
 };
 
-void thread_switch(struct thread* prev, struct thread* next) {
+void uthread_switch(struct uthread* prev, struct uthread* next) {
   void __switch_threads(void** prev, void* next);  // NOLINT
   __switch_threads(&prev->context, next->context);
 }
 
-struct thread* thread_allocate() {
-  const size_t size = STACK_SIZE + sizeof(struct thread);
+struct uthread* uthread_allocate() {
+  const size_t size = STACK_SIZE + sizeof(struct uthread);
 
-  struct thread* thread = (struct thread*)(malloc(size));
+  struct uthread* thread = (struct uthread*)(malloc(size));
   if (!thread) {
     return NULL;
   }
 
-  thread_reset(thread, NULL);
+  uthread_reset(thread, NULL);
 
   return thread;
 }
 
-void thread_reset(struct thread* thread, thread_routine entry) {
+void uthread_reset(struct uthread* thread, uthread_routine entry) {
   thread->context = (uint8_t*)thread + STACK_SIZE - sizeof(struct switch_frame);
 
   struct switch_frame* frame = (struct switch_frame*)(thread->context);
@@ -42,7 +42,7 @@ void thread_reset(struct thread* thread, thread_routine entry) {
   frame->rip = (uint64_t)entry;
 }
 
-void* thread_ip(struct thread* thread) {
+void* uthread_ip(struct uthread* thread) {
   struct switch_frame* frame = (struct switch_frame*)(thread->context);
   return (void*)(frame->rip);
 }
