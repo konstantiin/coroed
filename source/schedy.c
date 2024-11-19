@@ -156,21 +156,14 @@ void sched_cancel(struct task* task) {
   task->state = UTHREAD_CANCELLED;
 }
 
-struct task* task_current() {
-  return curr_task;
-}
-
-void task_yield() {
+void task_yield(struct task* task) {
+  (void)task;
   sched_switch_to_scheduler();
 }
 
-void* task_argument(struct task* task) {
-  return uthread_arg_0(task->thread);
-}
-
-void task_exit() {
-  sched_cancel(task_current());
-  task_yield();
+void task_exit(struct task* task) {
+  sched_cancel(task);
+  task_yield(task);
 }
 
 void sched_submit(void (*entry)(), void* argument) {
@@ -192,7 +185,8 @@ void sched_submit(void (*entry)(), void* argument) {
     if (task->state == UTHREAD_ZOMBIE) {
       uthread_reset(task->thread);
       uthread_set_entry(task->thread, entry);
-      uthread_set_arg_0(task->thread, argument);
+      uthread_set_arg_0(task->thread, task);
+      uthread_set_arg_1(task->thread, argument);
       task->state = UTHREAD_RUNNABLE;
     }
 

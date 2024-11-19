@@ -49,14 +49,6 @@ void uthread_reset(struct uthread* thread) {
   uthread_set_arg_1(thread, NULL);
 }
 
-void* uthread_arg_0(struct uthread* thread) {
-  return (void*)(uthread_frame(thread)->r15);
-}
-
-void* uthread_arg_1(struct uthread* thread) {
-  return (void*)(uthread_frame(thread)->r14);
-}
-
 void uthread_set_entry(struct uthread* thread, uthread_routine entry) {
   uthread_frame(thread)->rip = (uint64_t)(entry);
 }
