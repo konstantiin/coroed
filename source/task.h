@@ -4,6 +4,8 @@ struct task;
 
 struct task* task_current();
 
+void task_yield();
+
 void* unsafe_task_argument(struct task* task);
 void unsafe_task_exit();
 

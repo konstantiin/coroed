@@ -17,7 +17,7 @@ DEFINE_TASK(print_loop, const char, message) {
   const int delay = atoi(message) * DELAY;  // NOLINT
   for (int i = 0; i < COUNT; ++i) {
     printf("%s", message);
-    sched_yield();
+    task_yield();
     clock_delay(delay);
   }
 }

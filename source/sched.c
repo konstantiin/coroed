@@ -95,13 +95,18 @@ struct task* task_current() {
   return curr_task;
 }
 
+void task_yield() {
+  alarm_off();
+  sched_switch_to_scheduler();
+}
+
 void* unsafe_task_argument(struct task* task) {
   return uthread_argument(task->thread);
 }
 
 void unsafe_task_exit() {
   sched_cancel(task_current());
-  sched_yield();
+  task_yield();
 }
 
 void sched_submit(void (*entry)(), void* argument) {
@@ -127,11 +132,6 @@ void sched_submit(void (*entry)(), void* argument) {
 
 void sched_cancel(struct task* task) {
   task->state = UTHREAD_CANCELLED;
-}
-
-void sched_yield() {
-  alarm_off();
-  sched_switch_to_scheduler();
 }
 
 void sched_destroy() {
