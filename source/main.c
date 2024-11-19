@@ -7,7 +7,7 @@
 #include <unistd.h>
 
 #include "clock.h"
-#include "sched.h"
+#include "schedy.h"
 #include "task.h"
 
 #define DELAY 500
@@ -24,10 +24,14 @@ DEFINE_TASK(print_loop, const char, message) {
 
 int main() {
   sched_init();
+
   sched_submit(&print_loop, "1");
   sched_submit(&print_loop, "2");
   sched_submit(&print_loop, "3");
-  sched_loop();
+
+  sched_start();
+
   sched_destroy();
+
   return 0;
 }

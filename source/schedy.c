@@ -1,6 +1,10 @@
-#include "sched.h"
+// Linux
+#define _GNU_SOURCE
+
+#include "schedy.h"
 
 #include <assert.h>
+#include <sched.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -11,12 +15,20 @@
 #include <time.h>
 #include <unistd.h>
 
+// Linux
+#include <linux/sched.h>
+#include <sys/mman.h>
+#include <sys/wait.h>
+
 #include "alarm.h"
 #include "spinlock.h"
 #include "task.h"
 #include "uthread.h"
 
 #define THREAD_COUNT_LIMIT 8
+
+#define SCHED_WORKER_STACK_SIZE (size_t)(1024 * 1024)
+#define SCHED_WORKERS_COUNT (size_t)(2)
 
 struct task {
   struct uthread* thread;
@@ -55,7 +67,9 @@ void sched_switch_to(struct task* task) {
 
 struct task* sched_next();
 
-void sched_loop() {
+int sched_loop(void* argument) {
+  (void)argument;
+
   /* Setup an "interrupt" handler */
   alarm_setup(sched_switch_to_scheduler);
 
@@ -89,6 +103,37 @@ void sched_loop() {
     }
 
     spinlock_unlock(&task->lock);
+  }
+
+  return 0;
+}
+
+void sched_start() {
+  uint8_t* stacks[SCHED_WORKERS_COUNT] = {0};
+  for (size_t i = 0; i < SCHED_WORKERS_COUNT; ++i) {
+    stacks[i] = mmap(
+        /* addr = */ NULL,
+        SCHED_WORKER_STACK_SIZE,
+        PROT_READ | PROT_WRITE,
+        MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK,
+        /* fd = */ -1,
+        /* offset = */ 0
+    );
+    assert(stacks[i] != MAP_FAILED);
+  }
+
+  pid_t workers[SCHED_WORKERS_COUNT] = {0};
+  for (size_t i = 0; i < SCHED_WORKERS_COUNT; ++i) {
+    uint8_t* stack_top = stacks[i] + SCHED_WORKER_STACK_SIZE;
+    const int flags = SIGCHLD | CLONE_VM | CLONE_FS | CLONE_FILES | CLONE_IO;
+    void* argument = NULL;
+    workers[i] = clone(sched_loop, stack_top, flags, argument);
+    assert(0 < workers[i]);
+  }
+
+  for (size_t i = 0; i < SCHED_WORKERS_COUNT; ++i) {
+    int status = waitpid(workers[i], NULL, 0);
+    assert(status != -1);
   }
 }
 

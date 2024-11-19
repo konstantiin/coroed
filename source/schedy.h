@@ -8,6 +8,6 @@ void sched_init();
 
 void sched_submit(uthread_routine entry, void* argument);
 
-void sched_loop();
+void sched_start();
 
 void sched_destroy();
