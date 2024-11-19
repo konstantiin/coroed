@@ -139,15 +139,25 @@ void sched_submit(void (*entry)(), void* argument) {
   for (size_t i = 0; i < THREAD_COUNT_LIMIT; ++i) {
     struct task* task = &tasks[i];
 
+    if (!spinlock_try_lock(&task->lock)) {
+      continue;
+    }
+
     if (task->thread == NULL) {
       task->thread = uthread_allocate();
       assert(task->thread != NULL);
       task->state = UTHREAD_ZOMBIE;
     }
 
+    const bool is_submitted = task->state == UTHREAD_ZOMBIE;
+
     if (task->state == UTHREAD_ZOMBIE) {
       uthread_reset(task->thread, entry, argument);
       task->state = UTHREAD_RUNNABLE;
+    }
+
+    spinlock_unlock(&task->lock);
+    if (is_submitted) {
       return;
     }
   }
