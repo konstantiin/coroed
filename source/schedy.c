@@ -164,11 +164,11 @@ void task_yield() {
   sched_switch_to_scheduler();
 }
 
-void* unsafe_task_argument(struct task* task) {
+void* task_argument(struct task* task) {
   return uthread_arg_0(task->thread);
 }
 
-void unsafe_task_exit() {
+void task_exit() {
   sched_cancel(task_current());
   task_yield();
 }
