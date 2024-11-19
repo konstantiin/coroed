@@ -110,11 +110,11 @@ struct task* task_current() {
   return curr_thread;
 }
 
-void* task_argument(struct task* task) {
+void* unsafe_task_argument(struct task* task) {
   return uthread_argument(task->thread);
 }
 
-void task_exit() {
+void unsafe_task_exit() {
   sched_cancel(task_current());
   sched_yield();
 }
