@@ -1,7 +1,12 @@
 #pragma once
 
-#include "sched.h"
-#include "uthread.h"
+struct task;
+
+struct task* task_current();
+
+void* task_argument(struct task* self);
+
+void task_exit();
 
 #define DECLARE_TASK(name, type, argument) \
   void task_body_##name(type* argument);   \
@@ -9,10 +14,12 @@
 
 #define DEFINE_TASK(name, type, argument)            \
   DECLARE_TASK(name, type, argument);                \
+                                                     \
   void name() {                                      \
-    struct task* self = sched_current();             \
+    struct task* self = task_current();              \
     type* __argument = (type*)(task_argument(self)); \
     task_body_##name(__argument);                    \
-    sched_exit();                                    \
+    task_exit();                                     \
   }                                                  \
+                                                     \
   void task_body_##name(type* argument)

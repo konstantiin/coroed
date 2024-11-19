@@ -11,6 +11,7 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "task.h"
 #include "uthread.h"
 
 #define THREAD_COUNT_LIMIT 8
@@ -105,12 +106,17 @@ struct task* sched_next() {
   return NULL;
 }
 
-struct task* sched_current() {
+struct task* task_current() {
   return curr_thread;
 }
 
 void* task_argument(struct task* task) {
   return uthread_argument(task->thread);
+}
+
+void task_exit() {
+  sched_cancel(task_current());
+  sched_yield();
 }
 
 void sched_submit(void (*entry)(), void* argument) {
@@ -141,11 +147,6 @@ void sched_cancel(struct task* thread) {
 void sched_yield() {
   sched_interrupt_off();
   sched_switch_to_scheduler();
-}
-
-void sched_exit() {
-  sched_cancel(sched_current());
-  sched_yield();
 }
 
 void sched_destroy() {
