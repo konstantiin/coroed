@@ -23,6 +23,7 @@ DEFINE_TASK(print_loop, const char, message) {
 }
 
 int main() {
+  sched_init();
   sched_submit(&print_loop, "1");
   sched_submit(&print_loop, "2");
   sched_submit(&print_loop, "3");

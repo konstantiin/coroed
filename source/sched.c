@@ -12,6 +12,7 @@
 #include <unistd.h>
 
 #include "alarm.h"
+#include "spinlock.h"
 #include "task.h"
 #include "uthread.h"
 
@@ -25,12 +26,22 @@ struct task {
     UTHREAD_CANCELLED,
     UTHREAD_ZOMBIE,
   } state;
+  struct spinlock lock;
 };
 
-struct task tasks[THREAD_COUNT_LIMIT] = {0};
+struct task tasks[THREAD_COUNT_LIMIT];
 
 thread_local struct task* sched_task = NULL;
 thread_local struct task* curr_task = NULL;
+
+void sched_init() {
+  for (size_t i = 0; i < THREAD_COUNT_LIMIT; ++i) {
+    struct task* task = &tasks[i];
+    task->thread = NULL;
+    task->state = UTHREAD_ZOMBIE;
+    spinlock_init(&task->lock);
+  }
+}
 
 void sched_switch_to_scheduler() {
   uthread_switch(curr_task->thread, sched_task->thread);
