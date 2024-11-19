@@ -113,6 +113,10 @@ struct task* sched_next() {
   return NULL;
 }
 
+void sched_cancel(struct task* task) {
+  task->state = UTHREAD_CANCELLED;
+}
+
 struct task* task_current() {
   return curr_task;
 }
@@ -150,10 +154,6 @@ void sched_submit(void (*entry)(), void* argument) {
 
   printf("Threads exhausted");
   exit(1);
-}
-
-void sched_cancel(struct task* task) {
-  task->state = UTHREAD_CANCELLED;
 }
 
 void sched_destroy() {
