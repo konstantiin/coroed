@@ -5,13 +5,6 @@
 
 struct uthread {
   void* context;
-
-  enum {
-    UTHREAD_RUNNABLE,
-    UTHREAD_RUNNING,
-    UTHREAD_CANCELLED,
-    UTHREAD_ZOMBIE,
-  } state;
 };
 
 typedef void (*uthread_routine)();

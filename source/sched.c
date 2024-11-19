@@ -15,19 +15,29 @@
 
 #define THREAD_COUNT_LIMIT 8
 
-struct uthread* threads[THREAD_COUNT_LIMIT] = {NULL};
+struct task {
+  struct uthread* thread;
+  enum {
+    UTHREAD_RUNNABLE,
+    UTHREAD_RUNNING,
+    UTHREAD_CANCELLED,
+    UTHREAD_ZOMBIE,
+  } state;
+};
 
-thread_local struct uthread* sched_thread = NULL;
-thread_local struct uthread* curr_thread = NULL;
+struct task tasks[THREAD_COUNT_LIMIT] = {0};
+
+thread_local struct task* sched_thread = NULL;
+thread_local struct task* curr_thread = NULL;
 
 void sched_switch_to_scheduler() {
-  uthread_switch(curr_thread, sched_thread);
+  uthread_switch(curr_thread->thread, sched_thread->thread);
 }
 
-void sched_switch_to(struct uthread* thread) {
+void sched_switch_to(struct task* thread) {
   assert(thread != sched_thread);
   curr_thread = thread;
-  uthread_switch(sched_thread, curr_thread);
+  uthread_switch(sched_thread->thread, curr_thread->thread);
 }
 
 void sched_interrupt_on() {
@@ -43,7 +53,7 @@ void sched_interrupt(int signo) {
   sched_switch_to_scheduler();
 }
 
-struct uthread* sched_next();
+struct task* sched_next();
 
 void sched_start() {
   /* Setup an "interrupt" handler */
@@ -53,12 +63,13 @@ void sched_start() {
   sigaction(SIGALRM, &action, /* oldact = */ NULL);
 
   /* Setup sched thread */
-  struct uthread sched = {.context = NULL};
+  struct uthread thread = {.context = NULL};
+  struct task sched = {.thread = &thread};
   sched_thread = &sched;
 
   /* Event loop */
   for (;;) {
-    struct uthread* thread = sched_next();
+    struct task* thread = sched_next();
     if (thread == NULL) {
       break;
     }
@@ -72,7 +83,7 @@ void sched_start() {
     fflush(stdout);  // NOLINT
 
     if (thread->state == UTHREAD_CANCELLED) {
-      uthread_reset(thread, /* entry = */ NULL, /* argument = */ NULL);
+      uthread_reset(thread->thread, /* entry = */ NULL, /* argument = */ NULL);
       thread->state = UTHREAD_ZOMBIE;
     } else if (thread->state == UTHREAD_RUNNING) {
       thread->state = UTHREAD_RUNNABLE;
@@ -82,33 +93,39 @@ void sched_start() {
   }
 }
 
-struct uthread* sched_next() {
+struct task* sched_next() {
   static size_t curr_index = 0;
   for (size_t i = 0; i < THREAD_COUNT_LIMIT; ++i) {
-    struct uthread* thread = threads[curr_index];
+    struct task* thread = &tasks[curr_index];
     curr_index = (curr_index + 1) % THREAD_COUNT_LIMIT;
-    if (thread != NULL && thread->state == UTHREAD_RUNNABLE) {
+    if (thread->thread != NULL && thread->state == UTHREAD_RUNNABLE) {
       return thread;
     }
   }
   return NULL;
 }
 
-struct uthread* sched_current() {
+struct task* sched_current() {
   return curr_thread;
+}
+
+void* task_argument(struct task* task) {
+  return uthread_argument(task->thread);
 }
 
 void sched_submit(void (*entry)(), void* argument) {
   for (size_t i = 0; i < THREAD_COUNT_LIMIT; ++i) {
-    if (threads[i] == NULL) {
-      threads[i] = uthread_allocate();
-      assert(threads[i] != NULL);
-      threads[i]->state = UTHREAD_ZOMBIE;
+    struct task* task = &tasks[i];
+
+    if (task->thread == NULL) {
+      task->thread = uthread_allocate();
+      assert(task->thread != NULL);
+      task->state = UTHREAD_ZOMBIE;
     }
 
-    if (threads[i]->state == UTHREAD_ZOMBIE) {
-      uthread_reset(threads[i], entry, argument);
-      threads[i]->state = UTHREAD_RUNNABLE;
+    if (task->state == UTHREAD_ZOMBIE) {
+      uthread_reset(task->thread, entry, argument);
+      task->state = UTHREAD_RUNNABLE;
       return;
     }
   }
@@ -117,7 +134,7 @@ void sched_submit(void (*entry)(), void* argument) {
   exit(1);
 }
 
-void sched_cancel(struct uthread* thread) {
+void sched_cancel(struct task* thread) {
   thread->state = UTHREAD_CANCELLED;
 }
 
@@ -133,9 +150,9 @@ void sched_exit() {
 
 void sched_destroy() {
   for (size_t i = 0; i < THREAD_COUNT_LIMIT; ++i) {
-    struct uthread* thread = threads[i];
-    if (thread != NULL) {
-      free(thread);
+    struct task* thread = &tasks[i];
+    if (thread->thread != NULL) {
+      free(thread->thread);
     }
   }
 }
