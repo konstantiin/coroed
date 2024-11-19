@@ -5,7 +5,6 @@
 
 #include <assert.h>
 #include <sched.h>
-#include <signal.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -20,7 +19,6 @@
 #include <sys/mman.h>
 #include <sys/wait.h>
 
-#include "alarm.h"
 #include "spinlock.h"
 #include "task.h"
 #include "uthread.h"
@@ -28,9 +26,9 @@
 #define THREAD_COUNT_LIMIT 8
 
 #define SCHED_WORKER_STACK_SIZE (size_t)(1024 * 1024)
-#define SCHED_WORKERS_COUNT (size_t)(2)
+#define SCHED_WORKERS_COUNT (size_t)(4)
 
-#define SCHED_NEXT_MAX_ATTEMPTS (size_t)(64 * THREAD_COUNT_LIMIT)
+#define SCHED_NEXT_MAX_ATTEMPTS (size_t)(8)
 
 struct task {
   struct uthread* thread;
@@ -48,6 +46,12 @@ struct task tasks[THREAD_COUNT_LIMIT];
 thread_local struct task* sched_task = NULL;
 thread_local struct task* curr_task = NULL;
 thread_local size_t curr_index = 0;
+
+thread_local struct {
+  size_t steps;
+} statistics = {
+    .steps = 0,
+};
 
 void sched_init() {
   for (size_t i = 0; i < THREAD_COUNT_LIMIT; ++i) {
@@ -73,11 +77,6 @@ struct task* sched_next();
 int sched_loop(void* argument) {
   (void)argument;
 
-  printf("Worker with pid %d has thread_local %zu\n", getpid(), (size_t)(&curr_task));
-
-  /* Setup an "interrupt" handler */
-  alarm_setup(sched_switch_to_scheduler);
-
   /* Setup sched thread */
   struct uthread thread = {.context = NULL};
   struct task sched = {.thread = &thread};
@@ -92,7 +91,6 @@ int sched_loop(void* argument) {
 
     task->state = UTHREAD_RUNNING;
 
-    alarm_on();
     sched_switch_to(task);
 
     printf(" ");
@@ -108,7 +106,11 @@ int sched_loop(void* argument) {
     }
 
     spinlock_unlock(&task->lock);
+
+    statistics.steps += 1;
   }
+
+  printf("[coroed] Worker statitics: steps = %zu\n", statistics.steps);
 
   return 0;
 }
@@ -116,51 +118,35 @@ int sched_loop(void* argument) {
 void sched_start() {
   printf("[coroed] Starting the runtime...\n");
 
-  uint8_t* stacks[SCHED_WORKERS_COUNT] = {0};
+  thrd_t workers[SCHED_WORKERS_COUNT];
   for (size_t i = 0; i < SCHED_WORKERS_COUNT; ++i) {
-    printf("[coroed] Mapping stack for worker %zu...\n", i);
-    stacks[i] = mmap(
-        /* addr = */ NULL,
-        SCHED_WORKER_STACK_SIZE,
-        PROT_READ | PROT_WRITE,
-        MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK,
-        /* fd = */ -1,
-        /* offset = */ 0
-    );
-    assert(stacks[i] != MAP_FAILED);
-  }
-
-  pid_t workers[SCHED_WORKERS_COUNT] = {0};
-  for (size_t i = 0; i < SCHED_WORKERS_COUNT; ++i) {
-    uint8_t* stack_top = stacks[i] + SCHED_WORKER_STACK_SIZE - 1;
-    const int flags = SIGCHLD | CLONE_VM | CLONE_FS | CLONE_FILES | CLONE_IO;
-    void* argument = NULL;
-    workers[i] = clone(sched_loop, stack_top, flags, argument);
-    assert(0 < workers[i]);
-    printf("[coroed] Started worker %zu as a pid %d ...\n", i, workers[i]);
+    int code = thrd_create(&workers[i], sched_loop, /* arg = */ NULL);
+    assert(code == thrd_success);
   }
 
   for (size_t i = 0; i < SCHED_WORKERS_COUNT; ++i) {
     int status = 0;
-    int code = waitpid(workers[i], &status, 0);
-    printf("[coroed] Worker %zu exited with status %d...\n", i, status);
-    assert(code != -1);
+    int code = thrd_join(workers[i], &status);
+    assert(code == thrd_success);
   }
 }
 
 struct task* sched_next() {
-  for (size_t i = 0; i < SCHED_NEXT_MAX_ATTEMPTS; ++i) {
-    struct task* task = &tasks[curr_index];
-    if (!spinlock_try_lock(&task->lock)) {
-      continue;
-    }
+  for (size_t attempt = 0; attempt < SCHED_NEXT_MAX_ATTEMPTS; ++attempt) {
+    for (size_t i = 0; i < THREAD_COUNT_LIMIT; ++i) {
+      struct task* task = &tasks[curr_index];
+      if (!spinlock_try_lock(&task->lock)) {
+        continue;
+      }
 
-    curr_index = (curr_index + 1) % THREAD_COUNT_LIMIT;
-    if (task->thread != NULL && task->state == UTHREAD_RUNNABLE) {
-      return task;
-    }
+      curr_index = (curr_index + 1) % THREAD_COUNT_LIMIT;
+      if (task->thread != NULL && task->state == UTHREAD_RUNNABLE) {
+        return task;
+      }
 
-    spinlock_unlock(&task->lock);
+      spinlock_unlock(&task->lock);
+    }
+    sleep(1);
   }
 
   return NULL;
@@ -175,7 +161,6 @@ struct task* task_current() {
 }
 
 void task_yield() {
-  alarm_off();
   sched_switch_to_scheduler();
 }
 
