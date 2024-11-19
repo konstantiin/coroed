@@ -26,7 +26,7 @@ int main() {
   sched_submit(&print_loop, "1");
   sched_submit(&print_loop, "2");
   sched_submit(&print_loop, "3");
-  sched_start();
+  sched_loop();
   sched_destroy();
   return 0;
 }

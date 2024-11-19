@@ -10,6 +10,6 @@ void sched_cancel(struct task* task);
 
 void sched_yield();
 
-void sched_start();
+void sched_loop();
 
 void sched_destroy();

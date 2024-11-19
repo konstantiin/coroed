@@ -44,7 +44,7 @@ void sched_switch_to(struct task* task) {
 
 struct task* sched_next();
 
-void sched_start() {
+void sched_loop() {
   /* Setup an "interrupt" handler */
   alarm_setup(sched_switch_to_scheduler);
 
