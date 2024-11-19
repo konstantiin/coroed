@@ -169,8 +169,10 @@ void sched_submit(void (*entry)(), void* argument) {
 void sched_destroy() {
   for (size_t i = 0; i < THREAD_COUNT_LIMIT; ++i) {
     struct task* task = &tasks[i];
+    spinlock_lock(&task->lock);
     if (task->thread != NULL) {
       free(task->thread);
     }
+    spinlock_unlock(&task->lock);
   }
 }
