@@ -11,6 +11,7 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "alarm.h"
 #include "task.h"
 #include "uthread.h"
 
@@ -41,27 +42,11 @@ void sched_switch_to(struct task* task) {
   uthread_switch(sched_task->thread, curr_task->thread);
 }
 
-void sched_interrupt_on() {
-  alarm(1);
-}
-
-void sched_interrupt_off() {
-  alarm(0);
-}
-
-void sched_interrupt(int signo) {
-  assert(signo == SIGALRM);
-  sched_switch_to_scheduler();
-}
-
 struct task* sched_next();
 
 void sched_start() {
   /* Setup an "interrupt" handler */
-  struct sigaction action;
-  action.sa_handler = &sched_interrupt;
-  action.sa_flags = SA_NODEFER;
-  sigaction(SIGALRM, &action, /* oldact = */ NULL);
+  alarm_setup(sched_switch_to_scheduler);
 
   /* Setup sched thread */
   struct uthread thread = {.context = NULL};
@@ -77,7 +62,7 @@ void sched_start() {
 
     task->state = UTHREAD_RUNNING;
 
-    sched_interrupt_on();
+    alarm_on();
     sched_switch_to(task);
 
     printf(" ");
@@ -145,7 +130,7 @@ void sched_cancel(struct task* task) {
 }
 
 void sched_yield() {
-  sched_interrupt_off();
+  alarm_off();
   sched_switch_to_scheduler();
 }
 
