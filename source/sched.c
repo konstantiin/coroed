@@ -31,8 +31,8 @@ struct task {
 
 struct task tasks[THREAD_COUNT_LIMIT];
 
-thread_local struct task* sched_task = NULL;
-thread_local struct task* curr_task = NULL;
+static thread_local struct task* sched_task = NULL;
+static thread_local struct task* curr_task = NULL;
 
 void sched_init() {
   for (size_t i = 0; i < THREAD_COUNT_LIMIT; ++i) {
@@ -87,18 +87,29 @@ void sched_loop() {
     } else {
       assert(false);
     }
+
+    spinlock_unlock(&task->lock);
   }
 }
 
 struct task* sched_next() {
-  static size_t curr_index = 0;
-  for (size_t i = 0; i < THREAD_COUNT_LIMIT; ++i) {
+  static thread_local size_t curr_index = 0;
+  static const size_t max_attempts = 64 * THREAD_COUNT_LIMIT;
+
+  for (size_t i = 0; i < max_attempts; ++i) {
     struct task* task = &tasks[curr_index];
+    if (!spinlock_try_lock(&task->lock)) {
+      continue;
+    }
+
     curr_index = (curr_index + 1) % THREAD_COUNT_LIMIT;
     if (task->thread != NULL && task->state == UTHREAD_RUNNABLE) {
       return task;
     }
+
+    spinlock_unlock(&task->lock);
   }
+
   return NULL;
 }
 
