@@ -1,5 +1,6 @@
 #include "uthread.h"
 
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -33,20 +34,37 @@ struct uthread* uthread_allocate() {
     return NULL;
   }
 
-  uthread_reset(thread, /* entry = */ NULL, /* argument = */ NULL);
+  uthread_reset(thread);
 
   return thread;
 }
 
-void uthread_reset(struct uthread* thread, uthread_routine entry, void* argument) {
+void uthread_reset(struct uthread* thread) {
   thread->context = (uint8_t*)thread + STACK_SIZE - sizeof(struct switch_frame);
 
   struct switch_frame* frame = (struct switch_frame*)(thread->context);
   memset(frame, 0, sizeof(struct switch_frame));
-  frame->rip = (uint64_t)entry;
-  frame->r15 = (uint64_t)argument;
+  uthread_set_entry(thread, NULL);
+  uthread_set_arg_0(thread, NULL);
+  uthread_set_arg_1(thread, NULL);
 }
 
-void* uthread_argument(struct uthread* thread) {
+void* uthread_arg_0(struct uthread* thread) {
   return (void*)(uthread_frame(thread)->r15);
+}
+
+void* uthread_arg_1(struct uthread* thread) {
+  return (void*)(uthread_frame(thread)->r14);
+}
+
+void uthread_set_entry(struct uthread* thread, uthread_routine entry) {
+  uthread_frame(thread)->rip = (uint64_t)(entry);
+}
+
+void uthread_set_arg_0(struct uthread* thread, void* value) {
+  uthread_frame(thread)->r15 = (uint64_t)(value);
+}
+
+void uthread_set_arg_1(struct uthread* thread, void* value) {
+  uthread_frame(thread)->r14 = (uint64_t)(value);
 }

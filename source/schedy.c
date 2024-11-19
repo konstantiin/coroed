@@ -97,7 +97,7 @@ int sched_loop(void* argument) {
     fflush(stdout);  // NOLINT
 
     if (task->state == UTHREAD_CANCELLED) {
-      uthread_reset(task->thread, /* entry = */ NULL, /* argument = */ NULL);
+      uthread_reset(task->thread);
       task->state = UTHREAD_ZOMBIE;
     } else if (task->state == UTHREAD_RUNNING) {
       task->state = UTHREAD_RUNNABLE;
@@ -165,7 +165,7 @@ void task_yield() {
 }
 
 void* unsafe_task_argument(struct task* task) {
-  return uthread_argument(task->thread);
+  return uthread_arg_0(task->thread);
 }
 
 void unsafe_task_exit() {
@@ -190,7 +190,9 @@ void sched_submit(void (*entry)(), void* argument) {
     const bool is_submitted = task->state == UTHREAD_ZOMBIE;
 
     if (task->state == UTHREAD_ZOMBIE) {
-      uthread_reset(task->thread, entry, argument);
+      uthread_reset(task->thread);
+      uthread_set_entry(task->thread, entry);
+      uthread_set_arg_0(task->thread, argument);
       task->state = UTHREAD_RUNNABLE;
     }
 
