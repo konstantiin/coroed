@@ -7,14 +7,14 @@
 
 thread_local alarm_callback on_alarm = NULL;
 
-static void signal_handler(int signo) {
+void alarm_signal_handler(int signo) {
   assert(signo == SIGALRM);
   on_alarm();
 }
 
 void alarm_setup(alarm_callback callback) {
   struct sigaction action;
-  action.sa_handler = &signal_handler;
+  action.sa_handler = &alarm_signal_handler;
   action.sa_flags = SA_NODEFER;
   sigaction(SIGALRM, &action, /* oldact = */ NULL);
 

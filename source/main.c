@@ -25,9 +25,11 @@ DEFINE_TASK(print_loop, const char, message) {
 int main() {
   sched_init();
 
-  sched_submit(&print_loop, "1");
-  sched_submit(&print_loop, "2");
-  sched_submit(&print_loop, "3");
+  char* arg[] = {"1", "2", "3"};
+
+  sched_submit(&print_loop, arg[0]);
+  sched_submit(&print_loop, arg[1]);
+  sched_submit(&print_loop, arg[2]);
 
   sched_start();
 

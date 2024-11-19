@@ -30,6 +30,8 @@
 #define SCHED_WORKER_STACK_SIZE (size_t)(1024 * 1024)
 #define SCHED_WORKERS_COUNT (size_t)(2)
 
+#define SCHED_NEXT_MAX_ATTEMPTS (size_t)(64 * THREAD_COUNT_LIMIT)
+
 struct task {
   struct uthread* thread;
   enum {
@@ -43,8 +45,9 @@ struct task {
 
 struct task tasks[THREAD_COUNT_LIMIT];
 
-static thread_local struct task* sched_task = NULL;
-static thread_local struct task* curr_task = NULL;
+thread_local struct task* sched_task = NULL;
+thread_local struct task* curr_task = NULL;
+thread_local size_t curr_index = 0;
 
 void sched_init() {
   for (size_t i = 0; i < THREAD_COUNT_LIMIT; ++i) {
@@ -69,6 +72,8 @@ struct task* sched_next();
 
 int sched_loop(void* argument) {
   (void)argument;
+
+  printf("Worker with pid %d has thread_local %zu\n", getpid(), (size_t)(&curr_task));
 
   /* Setup an "interrupt" handler */
   alarm_setup(sched_switch_to_scheduler);
@@ -109,8 +114,11 @@ int sched_loop(void* argument) {
 }
 
 void sched_start() {
+  printf("[coroed] Starting the runtime...\n");
+
   uint8_t* stacks[SCHED_WORKERS_COUNT] = {0};
   for (size_t i = 0; i < SCHED_WORKERS_COUNT; ++i) {
+    printf("[coroed] Mapping stack for worker %zu...\n", i);
     stacks[i] = mmap(
         /* addr = */ NULL,
         SCHED_WORKER_STACK_SIZE,
@@ -124,24 +132,24 @@ void sched_start() {
 
   pid_t workers[SCHED_WORKERS_COUNT] = {0};
   for (size_t i = 0; i < SCHED_WORKERS_COUNT; ++i) {
-    uint8_t* stack_top = stacks[i] + SCHED_WORKER_STACK_SIZE;
+    uint8_t* stack_top = stacks[i] + SCHED_WORKER_STACK_SIZE - 1;
     const int flags = SIGCHLD | CLONE_VM | CLONE_FS | CLONE_FILES | CLONE_IO;
     void* argument = NULL;
     workers[i] = clone(sched_loop, stack_top, flags, argument);
     assert(0 < workers[i]);
+    printf("[coroed] Started worker %zu as a pid %d ...\n", i, workers[i]);
   }
 
   for (size_t i = 0; i < SCHED_WORKERS_COUNT; ++i) {
-    int status = waitpid(workers[i], NULL, 0);
-    assert(status != -1);
+    int status = 0;
+    int code = waitpid(workers[i], &status, 0);
+    printf("[coroed] Worker %zu exited with status %d...\n", i, status);
+    assert(code != -1);
   }
 }
 
 struct task* sched_next() {
-  static thread_local size_t curr_index = 0;
-  static const size_t max_attempts = 64 * THREAD_COUNT_LIMIT;
-
-  for (size_t i = 0; i < max_attempts; ++i) {
+  for (size_t i = 0; i < SCHED_NEXT_MAX_ATTEMPTS; ++i) {
     struct task* task = &tasks[curr_index];
     if (!spinlock_try_lock(&task->lock)) {
       continue;

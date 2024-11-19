@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define STACK_SIZE 16384
+#define STACK_SIZE (size_t)(1024 * 1024)
 
 struct [[gnu::packed]] switch_frame {
   uint64_t rflags;
