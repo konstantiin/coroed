@@ -123,21 +123,6 @@ int sched_loop(void* argument) {
   return 0;
 }
 
-void sched_start() {
-  for (size_t i = 0; i < SCHED_WORKERS_COUNT; ++i) {
-    int code = thrd_create(&threads[i], sched_loop, /* arg = */ &workers[i]);
-    assert(code == thrd_success);
-  }
-}
-
-void sched_wait() {
-  for (size_t i = 0; i < SCHED_WORKERS_COUNT; ++i) {
-    int status = 0;
-    int code = thrd_join(threads[i], &status);
-    assert(code == thrd_success);
-  }
-}
-
 struct task* sched_next(struct worker* worker) {
   for (size_t attempt = 0; attempt < SCHED_NEXT_MAX_ATTEMPTS; ++attempt) {
     for (size_t i = 0; i < SCHED_THREADS_LIMIT; ++i) {
@@ -204,6 +189,21 @@ void sched_submit(void (*entry)(), void* argument) {
 
   printf("Threads exhausted");
   exit(1);
+}
+
+void sched_start() {
+  for (size_t i = 0; i < SCHED_WORKERS_COUNT; ++i) {
+    int code = thrd_create(&threads[i], sched_loop, /* arg = */ &workers[i]);
+    assert(code == thrd_success);
+  }
+}
+
+void sched_wait() {
+  for (size_t i = 0; i < SCHED_WORKERS_COUNT; ++i) {
+    int status = 0;
+    int code = thrd_join(threads[i], &status);
+    assert(code == thrd_success);
+  }
 }
 
 void sched_destroy() {
