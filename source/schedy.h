@@ -12,4 +12,6 @@ void sched_start();
 
 void sched_wait();
 
+void sched_print_statistics();
+
 void sched_destroy();

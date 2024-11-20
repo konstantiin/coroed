@@ -46,6 +46,7 @@ struct worker {
   size_t curr_index;
   struct {
     size_t steps;
+    size_t cancelled;
   } statistics;
 };
 
@@ -65,6 +66,7 @@ void sched_worker_init(struct worker* worker) {
   worker->sched_thread.context = NULL;
   worker->curr_index = 0;
   worker->statistics.steps = 0;
+  worker->statistics.cancelled = 0;
 }
 
 void sched_init() {
@@ -109,6 +111,7 @@ int sched_loop(void* argument) {
     if (task->state == UTHREAD_CANCELLED) {
       uthread_reset(task->thread);
       task->state = UTHREAD_ZOMBIE;
+      worker->statistics.cancelled += 1;
     } else if (task->state == UTHREAD_RUNNING) {
       task->state = UTHREAD_RUNNABLE;
     } else {
@@ -203,6 +206,28 @@ void sched_wait() {
     int status = 0;
     int code = thrd_join(threads[i], &status);
     assert(code == thrd_success);
+  }
+}
+
+void sched_print_statistics() {
+  printf("\nsched statistics\n");
+
+  size_t tasks_count = 0;
+  size_t steps_count = 0;
+  for (size_t i = 0; i < SCHED_WORKERS_COUNT; ++i) {
+    struct worker* worker = &workers[i];
+    tasks_count += worker->statistics.cancelled;
+    steps_count += worker->statistics.steps;
+  }
+
+  printf("|- tasks executed %zu\n", tasks_count);
+  printf("|- steps done     %zu\n", steps_count);
+
+  for (size_t i = 0; i < SCHED_WORKERS_COUNT; ++i) {
+    struct worker* worker = &workers[i];
+    printf("|- worker %zu\n", i);
+    printf("   |- steps     %zu\n", worker->statistics.steps);
+    printf("   |- cancelled %zu\n", worker->statistics.cancelled);
   }
 }
 

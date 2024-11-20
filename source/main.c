@@ -51,6 +51,8 @@ int main() {
 
   sched_wait();
 
+  sched_print_statistics();
+
   sched_destroy();
 
   return 0;
