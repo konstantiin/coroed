@@ -32,6 +32,7 @@
 
 struct task {
   struct uthread* thread;
+  struct worker* worker;
   enum {
     UTHREAD_RUNNABLE,
     UTHREAD_RUNNING,
@@ -45,7 +46,6 @@ struct task tasks[SCHED_THREADS_LIMIT];
 
 struct worker {
   struct uthread sched_thread;
-  struct task* curr_task;
   size_t curr_index;
   struct {
     size_t steps;
@@ -53,7 +53,6 @@ struct worker {
 };
 
 thread_local struct worker worker = {
-    .curr_task = NULL,
     .curr_index = 0,
     .statistics = {.steps = 0},
 };
@@ -67,20 +66,19 @@ void sched_init() {
   }
 }
 
-void sched_switch_to_scheduler() {
-  struct task* curr = worker.curr_task;
-  struct uthread* sched = &worker.sched_thread;
-  uthread_switch(curr->thread, sched);
+void sched_switch_to_scheduler(struct task* task) {
+  struct uthread* sched = &task->worker->sched_thread;
+  task->worker = NULL;
+  uthread_switch(task->thread, sched);
 }
 
 void sched_switch_to(struct task* task) {
   assert(task->thread != &worker.sched_thread);
-  worker.curr_task = task;
 
-  struct task* curr = worker.curr_task;
+  task->worker = &worker;
+
   struct uthread* sched = &worker.sched_thread;
-
-  uthread_switch(sched, curr->thread);
+  uthread_switch(sched, task->thread);
 }
 
 struct task* sched_next();
@@ -88,7 +86,6 @@ struct task* sched_next();
 int sched_loop(void* argument) {
   (void)argument;
 
-  /* Event loop */
   for (;;) {
     struct task* task = sched_next();
     if (task == NULL) {
@@ -163,8 +160,7 @@ void sched_cancel(struct task* task) {
 }
 
 void task_yield(struct task* task) {
-  (void)task;
-  sched_switch_to_scheduler();
+  sched_switch_to_scheduler(task);
 }
 
 void task_exit(struct task* task) {

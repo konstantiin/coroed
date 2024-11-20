@@ -9,10 +9,6 @@
 
 struct task;
 
-struct task* task_current();
-
-void* task_argument(struct task* task);
-
 void task_yield(struct task* task);
 void task_exit(struct task* task);
 
@@ -25,7 +21,7 @@ void task_exit(struct task* task);
                                           \
   void name() {                           \
     struct task* self = NULL;             \
-    type* argument; /* NOLINT */          \
+    type* argument = NULL; /* NOLINT */   \
     UTHREAD_READ_ARG_0(self);             \
     UTHREAD_READ_ARG_1(argument);         \
     task_body_##name(self, argument);     \

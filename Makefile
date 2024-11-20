@@ -5,7 +5,7 @@ BIN_DIR   = $(BUILD_DIR)/bin
 
 CC        = clang
 CFLAGS    = -g -O0 -I $(SRC_DIR) -Wall -Werror -fno-omit-frame-pointer
-LDFLAGS   = 
+LDFLAGS   = $(CFLAGS)
 
 SRCS     := $(wildcard $(SRC_DIR)/*.c) $(wildcard $(SRC_DIR)/*.S)
 
