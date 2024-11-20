@@ -37,10 +37,10 @@ jobs:
 
       - name: Build
         run: |
-          if [[ -z "${{ matrix.compiler }}" ]]; then
+          if [[ -z "${{ matrix.sanitizers }}" ]]; then
               SAN=""
           else
-              SAN="-fsanitize=${{ matrix.compiler }}"
+              SAN="-fsanitize=${{ matrix.sanitizers }}"
           fi
           bear -- make compile \
             COMPILER=${{ matrix.compiler }} \
