@@ -84,9 +84,10 @@ int main() {
   sched_start();
 
   sched_wait();
-  assert(atomic_load(&actual_count) == expected_count);
 
   sched_print_statistics();
+
+  assert(atomic_load(&actual_count) == expected_count);
 
   sched_destroy();
 

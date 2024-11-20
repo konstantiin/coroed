@@ -13,10 +13,6 @@
 
 #endif
 
-kthread_id_t kthread_id() {
-  return getpid();
-}
-
 #ifdef KTHREAD_STDLIB
 
 enum kthread_status kthread_status_from(int thrd_status) {
@@ -35,6 +31,10 @@ enum kthread_status kthread_join(struct kthread* kthread) {
   int code = thrd_join(kthread->thrd, &status);
   assert(code != thrd_success || status == 0);
   return kthread_status_from(code);
+}
+
+kthread_id_t kthread_id() {
+  return (int)thrd_current();
 }
 
 #endif
@@ -77,6 +77,10 @@ enum kthread_status kthread_join(struct kthread* kthread) {
   assert(code == 0);
 
   return KTHREAD_SUCCESS;
+}
+
+kthread_id_t kthread_id() {
+  return getpid();
 }
 
 #endif

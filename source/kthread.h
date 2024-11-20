@@ -10,6 +10,10 @@
 #include <stdint.h>
 #include <unistd.h>
 
+#ifdef KTHREAD_STDLIB
+#include <threads.h>
+#endif
+
 struct kthread;
 
 enum kthread_status {
@@ -19,7 +23,7 @@ enum kthread_status {
 
 typedef int (*kthread_routine)(void*);
 
-typedef pid_t kthread_id_t;
+typedef size_t kthread_id_t;
 
 enum kthread_status kthread_create(
     struct kthread* kthread, kthread_routine routine, void* argument
