@@ -33,13 +33,14 @@ struct task {
 
 struct worker {
   struct uthread sched_thread;
-  size_t curr_index;
   struct {
     size_t steps;
     size_t cancelled;
   } statistics;
 };
 
+struct spinlock tasks_lock;
+size_t next_task_index = 0;
 struct task tasks[SCHED_THREADS_LIMIT];
 
 struct worker workers[SCHED_WORKERS_COUNT];
@@ -54,12 +55,12 @@ void sched_task_init(struct task* task) {
 
 void sched_worker_init(struct worker* worker) {
   worker->sched_thread.context = NULL;
-  worker->curr_index = 0;
   worker->statistics.steps = 0;
   worker->statistics.cancelled = 0;
 }
 
 void sched_init() {
+  spinlock_init(&tasks_lock);
   for (size_t i = 0; i < SCHED_THREADS_LIMIT; ++i) {
     sched_task_init(&tasks[i]);
   }
@@ -76,28 +77,26 @@ void sched_switch_to_scheduler(struct task* task) {
 
 void sched_switch_to(struct worker* worker, struct task* task) {
   assert(task->thread != &worker->sched_thread);
-
   task->worker = worker;
-
   struct uthread* sched = &worker->sched_thread;
   uthread_switch(sched, task->thread);
 }
 
-struct task* sched_next(struct worker* worker);
+struct task* sched_next();
 
 int sched_loop(void* argument) {
   struct worker* worker = argument;
 
   for (;;) {
-    struct task* task = sched_next(worker);
+    struct task* task = sched_next();
     if (task == NULL) {
       break;
     }
 
     task->state = UTHREAD_RUNNING;
-
     sched_switch_to(worker, task);
 
+    worker->statistics.steps += 1;
     if (task->state == UTHREAD_CANCELLED) {
       uthread_reset(task->thread);
       task->state = UTHREAD_ZOMBIE;
@@ -109,28 +108,29 @@ int sched_loop(void* argument) {
     }
 
     spinlock_unlock(&task->lock);
-
-    worker->statistics.steps += 1;
   }
 
   return 0;
 }
 
-struct task* sched_next(struct worker* worker) {
+struct task* sched_next() {
   for (size_t attempt = 0; attempt < SCHED_NEXT_MAX_ATTEMPTS; ++attempt) {
+    spinlock_lock(&tasks_lock);
     for (size_t i = 0; i < SCHED_THREADS_LIMIT; ++i) {
-      struct task* task = &tasks[worker->curr_index];
+      struct task* task = &tasks[next_task_index];
       if (!spinlock_try_lock(&task->lock)) {
         continue;
       }
 
-      worker->curr_index = (worker->curr_index + 1) % SCHED_THREADS_LIMIT;
+      next_task_index = (next_task_index + 1) % SCHED_THREADS_LIMIT;
       if (task->thread != NULL && task->state == UTHREAD_RUNNABLE) {
+        spinlock_unlock(&tasks_lock);
         return task;
       }
 
       spinlock_unlock(&task->lock);
     }
+    spinlock_unlock(&tasks_lock);
     sleep(1);
   }
 
