@@ -4,7 +4,7 @@ OBJ_DIR   = $(BUILD_DIR)/obj
 BIN_DIR   = $(BUILD_DIR)/bin
 
 CC        = clang
-CFLAGS    = -g -O0 -I $(SRC_DIR) -Wall -Werror -fno-omit-frame-pointer -fsanitize=leak
+CFLAGS    = -g -O0 -I $(SRC_DIR) -Wall -Werror -fno-omit-frame-pointer
 LDFLAGS   = $(CFLAGS)
 
 SRCS     := $(wildcard $(SRC_DIR)/*.c) $(wildcard $(SRC_DIR)/*.S)
@@ -17,7 +17,7 @@ TARGET    = app
 run: $(BIN_DIR)/$(TARGET)
 	./$(BIN_DIR)/$(TARGET)
 
-compile: $(BIN_DIR)/$(TARGET)
+compile: clean $(BIN_DIR)/$(TARGET)
 
 clean:
 	rm -rf $(BUILD_DIR)

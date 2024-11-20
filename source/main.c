@@ -18,10 +18,11 @@
 TASK_DEFINE(print_loop, const char, message) {
   const int delay = atoi(message) * DELAY;  // NOLINT
   for (int i = 0; i < COUNT; ++i) {
+    LOG_INFO_FLUSHED("%s\n", message);
+
     char* msg = malloc(sizeof(char) * (strlen(message) + 1));
     strcpy(msg, message);
 
-    LOG_INFO_FLUSHED("%s ", msg);
     yield;
 
     free(msg);

@@ -1,5 +1,4 @@
-// Linux
-#define _GNU_SOURCE
+#include "schedy.h"
 
 #include <assert.h>
 #include <sched.h>
@@ -12,12 +11,6 @@
 #include <time.h>
 #include <unistd.h>
 
-// Linux
-#include <linux/sched.h>
-#include <sys/mman.h>
-#include <sys/wait.h>
-
-#include "schedy.h"
 #include "spinlock.h"
 #include "task.h"
 #include "uthread.h"
