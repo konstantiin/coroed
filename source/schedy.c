@@ -16,10 +16,7 @@
 #include "uthread.h"
 
 #define SCHED_THREADS_LIMIT 64
-
-#define SCHED_WORKER_STACK_SIZE (size_t)(1024 * 1024)
-#define SCHED_WORKERS_COUNT (size_t)(8)
-
+#define SCHED_WORKERS_COUNT (size_t)(1)
 #define SCHED_NEXT_MAX_ATTEMPTS (size_t)(8)
 
 struct task {
