@@ -15,7 +15,7 @@
 #include "task.h"
 #include "uthread.h"
 
-#define SCHED_THREADS_LIMIT 64
+#define SCHED_THREADS_LIMIT 512
 #define SCHED_WORKERS_COUNT (size_t)(8)
 #define SCHED_NEXT_MAX_ATTEMPTS (size_t)(4)
 

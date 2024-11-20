@@ -12,8 +12,32 @@
 #include "schedy.h"
 #include "task.h"
 
-#define DELAY 200
+#define DELAY 50
 #define COUNT 8
+
+static atomic_int_least64_t actual_count = 0;
+static int_least64_t expected_count = 0;
+
+TASK_DEFINE(increment, void, ignored) {
+  atomic_fetch_add(&actual_count, 1);
+}
+
+TASK_DEFINE(decrement, void, ignored) {
+  atomic_fetch_add(&actual_count, -1);
+}
+
+TASK_DEFINE(adder, void, argument) {
+  int64_t value = (int64_t)(argument);
+  if (0 < value) {
+    for (int64_t i = 1; i <= value; ++i) {
+      sched_submit(increment, NULL);
+    }
+  } else if (value < 0) {
+    for (int64_t i = -1; i >= value; ++i) {
+      sched_submit(decrement, NULL);
+    }
+  }
+}
 
 TASK_DEFINE(print_loop, const char, message) {
   const int delay = atoi(message) * DELAY;  // NOLINT
@@ -36,21 +60,37 @@ TASK_DEFINE(spammer, void, ignored) {
   }
 }
 
+void add(int64_t value) {
+  expected_count += value;
+  sched_submit(&adder, (void*)(value));
+}
+
 int main() {
   log_init();
   sched_init();
 
+  srand(231);
+
+  add(rand() % 32);
   sched_submit(&print_loop, "1");
+  add(rand() % 32);
   sched_submit(&spammer, NULL);
+  add(rand() % 32);
   sched_submit(&print_loop, "1");
+  add(rand() % 32);
   sched_submit(&spammer, NULL);
+  add(rand() % 32);
   sched_submit(&print_loop, "1");
+  add(rand() % 32);
   sched_submit(&spammer, NULL);
+  add(rand() % 32);
   sched_submit(&print_loop, "1");
+  add(rand() % 32);
 
   sched_start();
 
   sched_wait();
+  assert(atomic_load(&actual_count) == expected_count);
 
   sched_print_statistics();
 
