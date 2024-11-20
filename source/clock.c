@@ -1,5 +1,6 @@
 #include "clock.h"
 
+#include <assert.h>
 #include <time.h>
 
 static unsigned long long timespec2ms(const struct timespec* spec) {
@@ -7,9 +8,11 @@ static unsigned long long timespec2ms(const struct timespec* spec) {
 }
 
 uint64_t clock_now() {
-  struct timespec spec = {};
+  struct timespec spec;
 
-  clock_gettime(CLOCK_MONOTONIC, &spec);
+  int code = clock_gettime(CLOCK_MONOTONIC, &spec);
+  assert(code == 0);
+
   return timespec2ms(&spec);
 }
 
