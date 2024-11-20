@@ -82,13 +82,14 @@ void sched_switch_to(struct worker* worker, struct task* task) {
   uthread_switch(sched, task->thread);
 }
 
-struct task* sched_next();
+struct task* sched_acquire_next();
+void sched_release(struct task* task);
 
 int sched_loop(void* argument) {
   struct worker* worker = argument;
 
   for (;;) {
-    struct task* task = sched_next();
+    struct task* task = sched_acquire_next();
     if (task == NULL) {
       break;
     }
@@ -98,22 +99,16 @@ int sched_loop(void* argument) {
 
     worker->statistics.steps += 1;
     if (task->state == UTHREAD_CANCELLED) {
-      uthread_reset(task->thread);
-      task->state = UTHREAD_ZOMBIE;
       worker->statistics.cancelled += 1;
-    } else if (task->state == UTHREAD_RUNNING) {
-      task->state = UTHREAD_RUNNABLE;
-    } else {
-      assert(false);
     }
 
-    spinlock_unlock(&task->lock);
+    sched_release(task);
   }
 
   return 0;
 }
 
-struct task* sched_next() {
+struct task* sched_acquire_next() {
   for (size_t attempt = 0; attempt < SCHED_NEXT_MAX_ATTEMPTS; ++attempt) {
     spinlock_lock(&tasks_lock);
     for (size_t i = 0; i < SCHED_THREADS_LIMIT; ++i) {
@@ -131,10 +126,23 @@ struct task* sched_next() {
       spinlock_unlock(&task->lock);
     }
     spinlock_unlock(&tasks_lock);
+
     sleep(1);
   }
 
   return NULL;
+}
+
+void sched_release(struct task* task) {
+  if (task->state == UTHREAD_CANCELLED) {
+    uthread_reset(task->thread);
+    task->state = UTHREAD_ZOMBIE;
+  } else if (task->state == UTHREAD_RUNNING) {
+    task->state = UTHREAD_RUNNABLE;
+  } else {
+    assert(false);
+  }
+  spinlock_unlock(&task->lock);
 }
 
 void sched_cancel(struct task* task) {
