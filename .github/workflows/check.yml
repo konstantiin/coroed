@@ -36,10 +36,14 @@ jobs:
           sudo apt install bear
 
       - name: Build
-        run: bear -- make compile
+        run: |
+          bear -- make compile \
+            COMPILER=${{ matrix.compiler }} \
+            OPTIMIZATION_LEVEL=${{ matrix.optimization_level }}\
+            SANITIZERS=${{ matrix.sanitizers }}
 
       - name: Test
-        run: make
+        run: ./build/bin/app
 
       - name: Check Format
         run: make check-format
