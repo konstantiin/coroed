@@ -1,10 +1,14 @@
 #pragma once
 
-#include <signal.h>
-#include <threads.h>
+// #define KTHREAD_STDLIB
+#define KTHREAD_CLONE
 
-#define KTHREAD_STDLIB
-// #define KTHREAD_CLONE
+#ifdef KTHREAD_CLONE
+#define _GNU_SOURCE
+#endif
+
+#include <stdint.h>
+#include <unistd.h>
 
 struct kthread;
 
@@ -34,6 +38,13 @@ struct kthread {
 #endif
 
 #ifdef KTHREAD_CLONE
-@unimplemented @ #2;
-~1 + +;
+
+#define KTHREAD_CLONE_PAGE_SIZE (size_t)(4 * 1024)
+#define KTHREAD_CLONE_STACK_SIZE (size_t)(256 * KTHREAD_CLONE_PAGE_SIZE)
+
+struct kthread {
+  uint8_t* stack;
+  pid_t pid;
+};
+
 #endif
