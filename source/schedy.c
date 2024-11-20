@@ -86,7 +86,7 @@ void sched_switch_to(struct worker* worker, struct task* task) {
 struct task* sched_acquire_next();
 void sched_release(struct task* task);
 
-void sched_loop(void* argument) {
+int sched_loop(void* argument) {
   struct worker* worker = argument;
 
   for (;;) {
@@ -105,6 +105,8 @@ void sched_loop(void* argument) {
 
     sched_release(task);
   }
+
+  return 0;
 }
 
 struct task* sched_acquire_next() {

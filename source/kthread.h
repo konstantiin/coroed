@@ -13,7 +13,7 @@ enum kthread_status {
   KTHREAD_FAILURE,
 };
 
-typedef void (*kthread_routine)(void*);
+typedef int (*kthread_routine)(void*);
 
 typedef pid_t kthread_id_t;
 
@@ -29,8 +29,6 @@ kthread_id_t kthread_id();
 
 struct kthread {
   thrd_t thrd;
-  kthread_routine routine;
-  void* argument;
 };
 
 #endif
