@@ -37,10 +37,15 @@ jobs:
 
       - name: Build
         run: |
+          if [[ -z "${{ matrix.compiler }}" ]]; then
+              SAN=""
+          else
+              SAN="-fsanitize=${{ matrix.compiler }}"
+          fi
           bear -- make compile \
             COMPILER=${{ matrix.compiler }} \
             OPTIMIZATION_LEVEL=${{ matrix.optimization_level }}\
-            SANITIZERS=-fsanitize=${{ matrix.sanitizers }}
+            SANITIZERS="$SAN"
 
       - name: Test
         run: ./build/bin/app

@@ -11,11 +11,22 @@ SANITIZERS=("" "address,leak")
 for compiler in "${COMPILERS[@]}"; do
     for optimization_level in "${OPTIMIZATION_LEVELS[@]}"; do
         for sanitizer in "${SANITIZERS[@]}"; do
-            echo "======= Running '$compiler', '$optimization_level', '$sanitizer' ======="
-            make \
+            if [[ -z "$sanitizers" ]]; then
+                SAN=""
+            else
+                SAN="-fsanitize=$sanitizers"
+            fi
+
+            echo "======= Building '$compiler', '$optimization_level', '$sanitizer' ======="
+            make clean
+            bear -- make compile \
                 COMPILER="$compiler" \
                 OPTIMIZATION_LEVEL="$optimization_level" \
-                SANITIZERS="-fsanitize=$sanitizer"
+                SANITIZERS="$SAN"
+            for i in {1..8}; do
+                echo "|- Running #$i..."
+                ./build/bin/app 1>/dev/null
+            done
         done
     done
 done
