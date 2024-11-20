@@ -23,7 +23,7 @@
 #include "task.h"
 #include "uthread.h"
 
-#define THREAD_COUNT_LIMIT 8
+#define SCHED_THREADS_LIMIT 32
 
 #define SCHED_WORKER_STACK_SIZE (size_t)(1024 * 1024)
 #define SCHED_WORKERS_COUNT (size_t)(4)
@@ -41,7 +41,7 @@ struct task {
   struct spinlock lock;
 };
 
-struct task tasks[THREAD_COUNT_LIMIT];
+struct task tasks[SCHED_THREADS_LIMIT];
 
 struct worker {
   struct uthread sched_thread;
@@ -59,7 +59,7 @@ thread_local struct worker worker = {
 };
 
 void sched_init() {
-  for (size_t i = 0; i < THREAD_COUNT_LIMIT; ++i) {
+  for (size_t i = 0; i < SCHED_THREADS_LIMIT; ++i) {
     struct task* task = &tasks[i];
     task->thread = NULL;
     task->state = UTHREAD_ZOMBIE;
@@ -139,13 +139,13 @@ void sched_start() {
 
 struct task* sched_next() {
   for (size_t attempt = 0; attempt < SCHED_NEXT_MAX_ATTEMPTS; ++attempt) {
-    for (size_t i = 0; i < THREAD_COUNT_LIMIT; ++i) {
+    for (size_t i = 0; i < SCHED_THREADS_LIMIT; ++i) {
       struct task* task = &tasks[worker.curr_index];
       if (!spinlock_try_lock(&task->lock)) {
         continue;
       }
 
-      worker.curr_index = (worker.curr_index + 1) % THREAD_COUNT_LIMIT;
+      worker.curr_index = (worker.curr_index + 1) % SCHED_THREADS_LIMIT;
       if (task->thread != NULL && task->state == UTHREAD_RUNNABLE) {
         return task;
       }
@@ -173,7 +173,7 @@ void task_exit(struct task* task) {
 }
 
 void sched_submit(void (*entry)(), void* argument) {
-  for (size_t i = 0; i < THREAD_COUNT_LIMIT; ++i) {
+  for (size_t i = 0; i < SCHED_THREADS_LIMIT; ++i) {
     struct task* task = &tasks[i];
 
     if (!spinlock_try_lock(&task->lock)) {
@@ -207,7 +207,7 @@ void sched_submit(void (*entry)(), void* argument) {
 }
 
 void sched_destroy() {
-  for (size_t i = 0; i < THREAD_COUNT_LIMIT; ++i) {
+  for (size_t i = 0; i < SCHED_THREADS_LIMIT; ++i) {
     struct task* task = &tasks[i];
     spinlock_lock(&task->lock);
     if (task->thread != NULL) {

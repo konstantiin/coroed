@@ -28,6 +28,12 @@ int main() {
   sched_submit(&print_loop, "1");
   sched_submit(&print_loop, "1");
   sched_submit(&print_loop, "1");
+  sched_submit(&print_loop, "1");
+  sched_submit(&print_loop, "1");
+  sched_submit(&print_loop, "1");
+  sched_submit(&print_loop, "1");
+  sched_submit(&print_loop, "1");
+  sched_submit(&print_loop, "1");
   sched_submit(&print_loop, "2");
   sched_submit(&print_loop, "2");
   sched_submit(&print_loop, "3");
