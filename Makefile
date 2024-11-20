@@ -4,7 +4,7 @@ OBJ_DIR   = $(BUILD_DIR)/obj
 BIN_DIR   = $(BUILD_DIR)/bin
 
 CC        = clang
-CFLAGS    = -g -O0 -I $(SRC_DIR) -Wall -Werror -fno-omit-frame-pointer
+CFLAGS    = -g -O3 -I $(SRC_DIR) -Wall -Werror -fno-omit-frame-pointer -fsanitize=address,leak
 LDFLAGS   = $(CFLAGS)
 
 SRCS     := $(wildcard $(SRC_DIR)/*.c) $(wildcard $(SRC_DIR)/*.S)
