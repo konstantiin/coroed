@@ -48,7 +48,11 @@ jobs:
             SANITIZERS="$SAN"
 
       - name: Test
-        run: ./build/bin/app
+        run: |
+          for i in {1..8}; do
+            echo "|- Running #$i..."
+            ./build/bin/app
+          done
 
       - name: Check Format
         run: make check-format
