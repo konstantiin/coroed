@@ -1,10 +1,13 @@
 #include "clock.h"
 
 #include <assert.h>
+#include <bits/time.h>
+#include <stdint.h>
 #include <time.h>
 
 static unsigned long long timespec2ms(const struct timespec* spec) {
-  return (unsigned long long)spec->tv_sec * 1000 + spec->tv_sec / (1000 * 1000);
+  const time_t ms_in_s = 1000;
+  return (unsigned long long)spec->tv_sec * ms_in_s + spec->tv_sec / (ms_in_s * ms_in_s);
 }
 
 uint64_t clock_now() {

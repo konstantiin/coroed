@@ -1,15 +1,21 @@
 #include "kthread.h"
 
 #include <assert.h>
+
+#ifdef KTHREAD_STDLIB
+
 #include <threads.h>
-#include <unistd.h>
+
+#endif
 
 #ifdef KTHREAD_CLONE
 
-#include <linux/sched.h>
 #include <sched.h>
+#include <signal.h>
+#include <stdlib.h>
 #include <sys/mman.h>
 #include <sys/wait.h>
+#include <unistd.h>
 
 #endif
 

@@ -1,5 +1,8 @@
 #include "interrupt.h"
 
+#include <assert.h>
+
+#include "alarm.h"
 #include "kthread.h"
 
 #ifdef KTHREAD_STDLIB

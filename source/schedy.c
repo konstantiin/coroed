@@ -7,7 +7,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <threads.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -17,13 +16,15 @@
 #include "task.h"
 #include "uthread.h"
 
-#define SCHED_THREADS_LIMIT 512
-#define SCHED_WORKERS_COUNT (size_t)(8)
-#define SCHED_NEXT_MAX_ATTEMPTS (size_t)(4)
-
 #define INTR_ENTER(worker) interrupt_received(&(worker)->interrupt_stack)
 #define INTR_OFF(worker) interrupt_off_push(&(worker)->interrupt_stack)
 #define INTR_ON(worker) interrupt_off_pop(&(worker)->interrupt_stack)
+
+enum {
+  SCHED_THREADS_LIMIT = 512,
+  SCHED_WORKERS_COUNT = (size_t)(8),
+  SCHED_NEXT_MAX_ATTEMPTS = (size_t)(4),
+};
 
 struct task {
   struct uthread* thread;

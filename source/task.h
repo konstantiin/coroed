@@ -2,13 +2,13 @@
 
 #include "uthread.h"
 
-#define yield           \
+#define YIELD           \
   do {                  \
     task_yield(__self); \
   } while (false)
 
-#define go(entry, argument)           \
-  do {                                \
+#define GO(entry, argument)                   \
+  do {                                        \
     task_submit(__self, (entry), (argument)); \
   } while (false)
 

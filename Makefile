@@ -50,6 +50,18 @@ $(BIN_DIR): $(BUILD_DIR)
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
+check-style:
+	find source -iname '*.h' -o -iname '*.c' \
+	| xargs clang-tidy -p compile_commands.json
+
+check-format:
+	find source -iname '*.h' -o -iname '*.c' \
+	| xargs clang-format -Werror --dry-run --fallback-style=Google --verbose
+
+fix-format:
+	find source -iname '*.h' -o -iname '*.c' \
+	| xargs clang-format -i --fallback-style=Google --verbose
+
 info:
 	$(info CC        = $(CC))
 	$(info CFLAGS    = $(CFLAGS))
