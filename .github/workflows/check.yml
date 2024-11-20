@@ -40,7 +40,7 @@ jobs:
           bear -- make compile \
             COMPILER=${{ matrix.compiler }} \
             OPTIMIZATION_LEVEL=${{ matrix.optimization_level }}\
-            SANITIZERS=${{ matrix.sanitizers }}
+            SANITIZERS=-fsanitize=${{ matrix.sanitizers }}
 
       - name: Test
         run: ./build/bin/app

@@ -13,7 +13,7 @@ CFLAGS    = -g -I $(SRC_DIR)
 CFLAGS   += -Wall -Werror
 CFLAGS   += -fno-omit-frame-pointer
 CFLAGS   += $(OPTIMIZATION_LEVEL)
-CFLAGS   += -fsanitize=$(SANITIZERS)
+CFLAGS   += $(SANITIZERS)
 
 LDFLAGS   = $(CFLAGS)
 
