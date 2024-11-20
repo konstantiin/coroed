@@ -7,7 +7,7 @@
 #define STACK_SIZE (size_t)(1024 * 1024)
 
 struct [[gnu::packed]] switch_frame {
-  uint64_t rflags;
+  // Callee-saved registers
   uint64_t r15;
   uint64_t r14;
   uint64_t r13;
