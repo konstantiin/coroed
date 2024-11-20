@@ -1,6 +1,7 @@
 // Linux
-#include "log.h"
 #define _GNU_SOURCE
+
+#include "schedy.h"
 
 #include <assert.h>
 #include <sched.h>
@@ -12,8 +13,6 @@
 #include <threads.h>
 #include <time.h>
 #include <unistd.h>
-
-#include "schedy.h"
 
 // Linux
 #include <linux/sched.h>
@@ -111,14 +110,10 @@ int sched_loop(void* argument) {
     worker.statistics.steps += 1;
   }
 
-  LOG_INFO("[coroed] Worker statitics: steps = %zu\n", worker.statistics.steps);
-
   return 0;
 }
 
 void sched_start() {
-  LOG_INFO("[coroed] Starting the runtime...\n");
-
   thrd_t workers[SCHED_WORKERS_COUNT];
   for (size_t i = 0; i < SCHED_WORKERS_COUNT; ++i) {
     int code = thrd_create(&workers[i], sched_loop, /* arg = */ NULL);
@@ -196,7 +191,7 @@ void sched_submit(void (*entry)(), void* argument) {
     }
   }
 
-  LOG_INFO("Threads exhausted");
+  printf("Threads exhausted");
   exit(1);
 }
 
