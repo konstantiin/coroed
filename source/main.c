@@ -30,11 +30,11 @@ TASK_DEFINE(adder, void, argument) {
   int64_t value = (int64_t)(argument);
   if (0 < value) {
     for (int64_t i = 1; i <= value; ++i) {
-      sched_submit(increment, NULL);
+      go(increment, NULL);
     }
   } else if (value < 0) {
     for (int64_t i = -1; i >= value; ++i) {
-      sched_submit(decrement, NULL);
+      go(decrement, NULL);
     }
   }
 }
@@ -56,13 +56,13 @@ TASK_DEFINE(print_loop, const char, message) {
 
 TASK_DEFINE(spammer, void, ignored) {
   for (int i = 0; i < COUNT; ++i) {
-    sched_submit(&print_loop, "1");
+    go(&print_loop, "1");
   }
 }
 
 void add(int64_t value) {
   expected_count += value;
-  sched_submit(&adder, (void*)(value));
+  go(&adder, (void*)(value));
 }
 
 int main() {
@@ -71,7 +71,7 @@ int main() {
 
   srand(231);
 
-  sched_submit(&spammer, NULL);
+  go(&spammer, NULL);
   add(rand() % 32);
   add(rand() % 32);
   add(rand() % 32);

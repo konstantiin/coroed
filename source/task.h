@@ -7,8 +7,14 @@
     task_yield(__self); \
   } while (false)
 
+#define go(entry, argument)           \
+  do {                                \
+    sched_submit((entry), (argument)); \
+  } while (false)
+
 struct task;
 
+void sched_submit(uthread_routine entry, void* argument);
 void task_yield(struct task* task);
 void task_exit(struct task* task);
 
