@@ -3,15 +3,16 @@ BUILD_DIR = build
 OBJ_DIR   = $(BUILD_DIR)/obj
 BIN_DIR   = $(BUILD_DIR)/bin
 
-OPTIMIZATION_LEVEL ?= 3
+COMPILER           ?= clang
+OPTIMIZATION_LEVEL ?= -O3
 SANITIZERS         ?=
 
-CC        = clang
+CC        = $(COMPILER)
 
 CFLAGS    = -g -I $(SRC_DIR)
 CFLAGS   += -Wall -Werror
 CFLAGS   += -fno-omit-frame-pointer
-CFLAGS   += -O$(OPTIMIZATION_LEVEL)
+CFLAGS   += $(OPTIMIZATION_LEVEL)
 CFLAGS   += -fsanitize=$(SANITIZERS)
 
 LDFLAGS   = $(CFLAGS)
