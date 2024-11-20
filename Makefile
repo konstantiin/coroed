@@ -3,8 +3,17 @@ BUILD_DIR = build
 OBJ_DIR   = $(BUILD_DIR)/obj
 BIN_DIR   = $(BUILD_DIR)/bin
 
+OPTIMIZATION_LEVEL ?= 3
+SANITIZERS         ?=
+
 CC        = clang
-CFLAGS    = -g -O0 -I $(SRC_DIR) -Wall -Werror -fno-omit-frame-pointer -fsanitize=leak
+
+CFLAGS    = -g -I $(SRC_DIR)
+CFLAGS   += -Wall -Werror
+CFLAGS   += -fno-omit-frame-pointer
+CFLAGS   += -O$(OPTIMIZATION_LEVEL)
+CFLAGS   += -fsanitize=$(SANITIZERS)
+
 LDFLAGS   = $(CFLAGS)
 
 SRCS     := $(wildcard $(SRC_DIR)/*.c) $(wildcard $(SRC_DIR)/*.S)
