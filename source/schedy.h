@@ -10,4 +10,6 @@ void sched_submit(uthread_routine entry, void* argument);
 
 void sched_start();
 
+void sched_wait();
+
 void sched_destroy();

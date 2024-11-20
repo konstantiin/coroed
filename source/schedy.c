@@ -1,8 +1,6 @@
 // Linux
 #define _GNU_SOURCE
 
-#include "schedy.h"
-
 #include <assert.h>
 #include <sched.h>
 #include <stdbool.h>
@@ -19,6 +17,7 @@
 #include <sys/mman.h>
 #include <sys/wait.h>
 
+#include "schedy.h"
 #include "spinlock.h"
 #include "task.h"
 #include "uthread.h"
@@ -53,6 +52,7 @@ struct worker {
 struct task tasks[SCHED_THREADS_LIMIT];
 
 struct worker workers[SCHED_WORKERS_COUNT];
+thrd_t threads[SCHED_WORKERS_COUNT];
 
 void sched_task_init(struct task* task) {
   task->thread = NULL;
@@ -124,15 +124,16 @@ int sched_loop(void* argument) {
 }
 
 void sched_start() {
-  thrd_t thrds[SCHED_WORKERS_COUNT];
   for (size_t i = 0; i < SCHED_WORKERS_COUNT; ++i) {
-    int code = thrd_create(&thrds[i], sched_loop, /* arg = */ &workers[i]);
+    int code = thrd_create(&threads[i], sched_loop, /* arg = */ &workers[i]);
     assert(code == thrd_success);
   }
+}
 
+void sched_wait() {
   for (size_t i = 0; i < SCHED_WORKERS_COUNT; ++i) {
     int status = 0;
-    int code = thrd_join(thrds[i], &status);
+    int code = thrd_join(threads[i], &status);
     assert(code == thrd_success);
   }
 }

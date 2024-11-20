@@ -49,6 +49,8 @@ int main() {
 
   sched_start();
 
+  sched_wait();
+
   sched_destroy();
 
   return 0;
