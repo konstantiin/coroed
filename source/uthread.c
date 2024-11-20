@@ -1,8 +1,10 @@
 #include "uthread.h"
 
+#include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
 
 #define STACK_SIZE (size_t)(1024 * 1024)
 
@@ -27,9 +29,14 @@ void uthread_switch(struct uthread* prev, struct uthread* next) {
 }
 
 struct uthread* uthread_allocate() {
-  const size_t size = STACK_SIZE + sizeof(struct uthread);
-
-  struct uthread* thread = (struct uthread*)(malloc(size));
+  struct uthread* thread = mmap(
+      /* addr   */ NULL,
+      /* len    */ STACK_SIZE,
+      /* prot   */ PROT_READ | PROT_WRITE,
+      /* flags  */ MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK,
+      /* fd     */ -1,
+      /* offset */ 0
+  );
   if (!thread) {
     return NULL;
   }
@@ -37,6 +44,13 @@ struct uthread* uthread_allocate() {
   uthread_reset(thread);
 
   return thread;
+}
+
+void uthread_free(struct uthread* thread) {
+  assert(thread != NULL);
+  uthread_reset(thread);
+  int code = munmap(thread, STACK_SIZE);
+  assert(code == 0);
 }
 
 void uthread_reset(struct uthread* thread) {

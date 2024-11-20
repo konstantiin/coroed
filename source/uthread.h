@@ -11,6 +11,7 @@ typedef void (*uthread_routine)();
 void uthread_switch(struct uthread* prev, struct uthread* next);
 
 struct uthread* uthread_allocate();
+void uthread_free(struct uthread* thread);
 
 void uthread_reset(struct uthread* thread);
 

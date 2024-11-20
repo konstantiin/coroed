@@ -23,10 +23,10 @@
 #include "task.h"
 #include "uthread.h"
 
-#define SCHED_THREADS_LIMIT 32
+#define SCHED_THREADS_LIMIT 64
 
 #define SCHED_WORKER_STACK_SIZE (size_t)(1024 * 1024)
-#define SCHED_WORKERS_COUNT (size_t)(4)
+#define SCHED_WORKERS_COUNT (size_t)(8)
 
 #define SCHED_NEXT_MAX_ATTEMPTS (size_t)(8)
 
@@ -207,7 +207,7 @@ void sched_destroy() {
     struct task* task = &tasks[i];
     spinlock_lock(&task->lock);
     if (task->thread != NULL) {
-      free(task->thread);
+      uthread_free(task->thread);
     }
     spinlock_unlock(&task->lock);
   }
