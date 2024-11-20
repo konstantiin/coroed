@@ -11,6 +11,7 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "kthread.h"
 #include "spinlock.h"
 #include "task.h"
 #include "uthread.h"
@@ -32,7 +33,7 @@ struct task {
 };
 
 struct worker {
-  thrd_t kernel_thread;
+  struct kthread kthread;
   struct uthread sched_thread;
   struct {
     size_t steps;
@@ -85,7 +86,7 @@ void sched_switch_to(struct worker* worker, struct task* task) {
 struct task* sched_acquire_next();
 void sched_release(struct task* task);
 
-int sched_loop(void* argument) {
+void sched_loop(void* argument) {
   struct worker* worker = argument;
 
   for (;;) {
@@ -104,8 +105,6 @@ int sched_loop(void* argument) {
 
     sched_release(task);
   }
-
-  return 0;
 }
 
 struct task* sched_acquire_next() {
@@ -194,16 +193,17 @@ void sched_submit(void (*entry)(), void* argument) {
 
 void sched_start() {
   for (size_t i = 0; i < SCHED_WORKERS_COUNT; ++i) {
-    int code = thrd_create(&workers[i].kernel_thread, sched_loop, /* arg = */ &workers[i]);
-    assert(code == thrd_success);
+    struct worker* worker = &workers[i];
+    enum kthread_status status = kthread_create(&worker->kthread, sched_loop, worker);
+    assert(status == KTHREAD_SUCCESS);
   }
 }
 
 void sched_wait() {
   for (size_t i = 0; i < SCHED_WORKERS_COUNT; ++i) {
-    int status = 0;
-    int code = thrd_join(workers[i].kernel_thread, &status);
-    assert(code == thrd_success);
+    struct worker* worker = &workers[i];
+    enum kthread_status status = kthread_join(&worker->kthread);
+    assert(status == KTHREAD_SUCCESS);
   }
 }
 
