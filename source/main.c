@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 #include "clock.h"
@@ -16,8 +17,13 @@
 TASK_DEFINE(print_loop, const char, message) {
   const int delay = atoi(message) * DELAY;  // NOLINT
   for (int i = 0; i < COUNT; ++i) {
-    printf("%s", message);
+    char* msg = malloc(sizeof(char) * (strlen(message) + 1));
+    strcpy(msg, message);
+
+    printf("%s", msg);
     yield;
+
+    free(msg);
     clock_delay(delay);
   }
 }
@@ -33,11 +39,11 @@ int main() {
 
   sched_submit(&print_loop, "1");
   sched_submit(&spammer, NULL);
-  sched_submit(&print_loop, "2");
+  sched_submit(&print_loop, "1");
   sched_submit(&spammer, NULL);
-  sched_submit(&print_loop, "2");
+  sched_submit(&print_loop, "1");
   sched_submit(&spammer, NULL);
-  sched_submit(&print_loop, "3");
+  sched_submit(&print_loop, "1");
 
   sched_start();
 
