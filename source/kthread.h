@@ -4,7 +4,7 @@
 // #define KTHREAD_CLONE
 
 #ifdef KTHREAD_CLONE
-#define _GNU_SOURCE // NOLINT
+#define _GNU_SOURCE  // NOLINT
 #endif
 
 #include <stdint.h>
