@@ -2,7 +2,6 @@
 
 #include <assert.h>
 #include <sched.h>
-#include <stdatomic.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -47,7 +46,7 @@ static struct spinlock tasks_lock;
 static size_t next_task_index = 0;
 static struct task tasks[SCHED_THREADS_LIMIT];
 
-static _Atomic(kthread_id_t) kthread_ids[SCHED_WORKERS_COUNT];
+static kthread_id_t kthread_ids[SCHED_WORKERS_COUNT];
 static struct worker workers[SCHED_WORKERS_COUNT];
 
 void sched_task_init(struct task* task) {
@@ -70,7 +69,7 @@ void sched_init() {
     sched_task_init(&tasks[i]);
   }
   for (size_t i = 0; i < SCHED_WORKERS_COUNT; ++i) {
-    atomic_store(&kthread_ids[i], 0);
+    kthread_ids[i] = 0;
     sched_worker_init(&workers[i]);
     workers[i].index = i;
   }
@@ -94,8 +93,7 @@ void sched_release(struct task* task);
 
 int sched_loop(void* argument) {
   struct worker* worker = argument;
-
-  atomic_store(&kthread_ids[worker->index], kthread_id());
+  kthread_ids[worker->index] = kthread_id();
 
   for (;;) {
     struct task* task = sched_acquire_next();
@@ -233,8 +231,7 @@ void sched_print_statistics() {
 
   for (size_t i = 0; i < SCHED_WORKERS_COUNT; ++i) {
     struct worker* worker = &workers[i];
-    kthread_id_t kthread_id = atomic_load(&kthread_ids[i]);
-    printf("|- worker %zu %zu\n", i, kthread_id);
+    printf("|- worker %zu %zu\n", i, kthread_ids[i]);
     printf("   |- steps     %zu\n", worker->statistics.steps);
     printf("   |- cancelled %zu\n", worker->statistics.cancelled);
   }
