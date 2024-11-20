@@ -11,6 +11,7 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "interrupt.h"
 #include "kthread.h"
 #include "spinlock.h"
 #include "task.h"
@@ -19,6 +20,10 @@
 #define SCHED_THREADS_LIMIT 512
 #define SCHED_WORKERS_COUNT (size_t)(8)
 #define SCHED_NEXT_MAX_ATTEMPTS (size_t)(4)
+
+#define INTR_ENTER(worker) interrupt_received(&(worker)->interrupt_stack)
+#define INTR_OFF(worker) interrupt_off_push(&(worker)->interrupt_stack)
+#define INTR_ON(worker) interrupt_off_pop(&(worker)->interrupt_stack)
 
 struct task {
   struct uthread* thread;
@@ -35,7 +40,9 @@ struct task {
 struct worker {
   size_t index;
   struct kthread kthread;
+  struct interrupt_stack interrupt_stack;
   struct uthread sched_thread;
+  struct task* running_task;
   struct {
     size_t steps;
     size_t cancelled;
@@ -56,9 +63,11 @@ void sched_task_init(struct task* task) {
   spinlock_init(&task->lock);
 }
 
-void sched_worker_init(struct worker* worker) {
-  worker->index = SIZE_MAX;
+void sched_worker_init(struct worker* worker, size_t index) {
+  worker->index = index;
+  interrupt_stack_init(&worker->interrupt_stack);
   worker->sched_thread.context = NULL;
+  worker->running_task = NULL;
   worker->statistics.steps = 0;
   worker->statistics.cancelled = 0;
 }
@@ -70,8 +79,7 @@ void sched_init() {
   }
   for (size_t i = 0; i < SCHED_WORKERS_COUNT; ++i) {
     kthread_ids[i] = 0;
-    sched_worker_init(&workers[i]);
-    workers[i].index = i;
+    sched_worker_init(&workers[i], i);
   }
 }
 
@@ -83,7 +91,14 @@ void sched_switch_to_scheduler(struct task* task) {
 
 void sched_switch_to(struct worker* worker, struct task* task) {
   assert(task->thread != &worker->sched_thread);
+
+  task->state = UTHREAD_RUNNING;
+
   task->worker = worker;
+  worker->running_task = task;
+
+  INTR_ON(worker);
+
   struct uthread* sched = &worker->sched_thread;
   uthread_switch(sched, task->thread);
 }
@@ -91,9 +106,27 @@ void sched_switch_to(struct worker* worker, struct task* task) {
 struct task* sched_acquire_next();
 void sched_release(struct task* task);
 
+struct worker* sched_worker() {
+  kthread_id_t tid = kthread_id();
+  for (size_t i = 0; i < SCHED_WORKERS_COUNT; ++i) {
+    if (kthread_ids[i] == tid) {
+      return &workers[i];
+    }
+  }
+  return NULL;
+}
+
+void sched_preempt() {
+  struct worker* worker = sched_worker();
+  INTR_ENTER(worker);
+  sched_switch_to_scheduler(worker->running_task);
+}
+
 int sched_loop(void* argument) {
   struct worker* worker = argument;
   kthread_ids[worker->index] = kthread_id();
+
+  interrupt_setup(sched_preempt);
 
   for (;;) {
     struct task* task = sched_acquire_next();
@@ -101,7 +134,6 @@ int sched_loop(void* argument) {
       break;
     }
 
-    task->state = UTHREAD_RUNNING;
     sched_switch_to(worker, task);
 
     worker->statistics.steps += 1;
@@ -141,6 +173,7 @@ struct task* sched_acquire_next() {
 }
 
 void sched_release(struct task* task) {
+  task->worker = NULL;
   if (task->state == UTHREAD_CANCELLED) {
     uthread_reset(task->thread);
     task->state = UTHREAD_ZOMBIE;
@@ -157,12 +190,27 @@ void sched_cancel(struct task* task) {
 }
 
 void task_yield(struct task* task) {
+  INTR_OFF(task->worker);
   sched_switch_to_scheduler(task);
 }
 
 void task_exit(struct task* task) {
   sched_cancel(task);
   task_yield(task);
+}
+
+void task_submit(struct task* parent, uthread_routine entry, void* argument) {
+  struct worker* worker = NULL;
+  for (;;) {
+    worker = parent->worker;
+    INTR_OFF(worker);
+    if (worker == parent->worker) {
+      break;
+    }
+  }
+
+  sched_submit(*entry, argument);
+  INTR_ON(worker);
 }
 
 void sched_submit(void (*entry)(), void* argument) {

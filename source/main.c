@@ -55,14 +55,15 @@ TASK_DEFINE(print_loop, const char, message) {
 }
 
 TASK_DEFINE(spammer, void, ignored) {
-  for (int i = 0; i < COUNT; ++i) {
+  for (int i = 0; i < COUNT / 2; ++i) {
     go(&print_loop, "1");
+    go(&print_loop, "2");
   }
 }
 
 void add(int64_t value) {
   expected_count += value;
-  go(&adder, (void*)(value));
+  sched_submit(&adder, (void*)(value));
 }
 
 int main() {
@@ -71,7 +72,7 @@ int main() {
 
   srand(231);
 
-  go(&spammer, NULL);
+  sched_submit(&spammer, NULL);
   add(rand() % 32);
   add(rand() % 32);
   add(rand() % 32);

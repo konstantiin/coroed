@@ -1,7 +1,7 @@
 #pragma once
 
-// #define KTHREAD_STDLIB
-#define KTHREAD_CLONE
+#define KTHREAD_STDLIB
+// #define KTHREAD_CLONE
 
 #ifdef KTHREAD_CLONE
 #define _GNU_SOURCE
