@@ -71,20 +71,14 @@ int main() {
 
   srand(231);
 
-  add(rand() % 32);
-  sched_submit(&print_loop, "1");
-  add(rand() % 32);
   sched_submit(&spammer, NULL);
   add(rand() % 32);
-  sched_submit(&print_loop, "1");
   add(rand() % 32);
-  sched_submit(&spammer, NULL);
   add(rand() % 32);
-  sched_submit(&print_loop, "1");
   add(rand() % 32);
-  sched_submit(&spammer, NULL);
   add(rand() % 32);
-  sched_submit(&print_loop, "1");
+  add(rand() % 32);
+  add(rand() % 32);
   add(rand() % 32);
 
   sched_start();

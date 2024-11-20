@@ -32,6 +32,7 @@ struct task {
 };
 
 struct worker {
+  thrd_t kernel_thread;
   struct uthread sched_thread;
   struct {
     size_t steps;
@@ -44,7 +45,6 @@ size_t next_task_index = 0;
 struct task tasks[SCHED_THREADS_LIMIT];
 
 struct worker workers[SCHED_WORKERS_COUNT];
-thrd_t threads[SCHED_WORKERS_COUNT];
 
 void sched_task_init(struct task* task) {
   task->thread = NULL;
@@ -194,7 +194,7 @@ void sched_submit(void (*entry)(), void* argument) {
 
 void sched_start() {
   for (size_t i = 0; i < SCHED_WORKERS_COUNT; ++i) {
-    int code = thrd_create(&threads[i], sched_loop, /* arg = */ &workers[i]);
+    int code = thrd_create(&workers[i].kernel_thread, sched_loop, /* arg = */ &workers[i]);
     assert(code == thrd_success);
   }
 }
@@ -202,7 +202,7 @@ void sched_start() {
 void sched_wait() {
   for (size_t i = 0; i < SCHED_WORKERS_COUNT; ++i) {
     int status = 0;
-    int code = thrd_join(threads[i], &status);
+    int code = thrd_join(workers[i].kernel_thread, &status);
     assert(code == thrd_success);
   }
 }
