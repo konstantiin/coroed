@@ -1,7 +1,6 @@
 // Linux
+#include "log.h"
 #define _GNU_SOURCE
-
-#include "schedy.h"
 
 #include <assert.h>
 #include <sched.h>
@@ -13,6 +12,8 @@
 #include <threads.h>
 #include <time.h>
 #include <unistd.h>
+
+#include "schedy.h"
 
 // Linux
 #include <linux/sched.h>
@@ -96,9 +97,6 @@ int sched_loop(void* argument) {
 
     sched_switch_to(task);
 
-    printf(" ");
-    fflush(stdout);  // NOLINT
-
     if (task->state == UTHREAD_CANCELLED) {
       uthread_reset(task->thread);
       task->state = UTHREAD_ZOMBIE;
@@ -113,13 +111,13 @@ int sched_loop(void* argument) {
     worker.statistics.steps += 1;
   }
 
-  printf("[coroed] Worker statitics: steps = %zu\n", worker.statistics.steps);
+  LOG_INFO("[coroed] Worker statitics: steps = %zu\n", worker.statistics.steps);
 
   return 0;
 }
 
 void sched_start() {
-  printf("[coroed] Starting the runtime...\n");
+  LOG_INFO("[coroed] Starting the runtime...\n");
 
   thrd_t workers[SCHED_WORKERS_COUNT];
   for (size_t i = 0; i < SCHED_WORKERS_COUNT; ++i) {
@@ -198,7 +196,7 @@ void sched_submit(void (*entry)(), void* argument) {
     }
   }
 
-  printf("Threads exhausted");
+  LOG_INFO("Threads exhausted");
   exit(1);
 }
 

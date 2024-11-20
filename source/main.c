@@ -8,6 +8,7 @@
 #include <unistd.h>
 
 #include "clock.h"
+#include "log.h"
 #include "schedy.h"
 #include "task.h"
 
@@ -20,7 +21,7 @@ TASK_DEFINE(print_loop, const char, message) {
     char* msg = malloc(sizeof(char) * (strlen(message) + 1));
     strcpy(msg, message);
 
-    printf("%s", msg);
+    LOG_INFO_FLUSHED("%s ", msg);
     yield;
 
     free(msg);
@@ -35,6 +36,7 @@ TASK_DEFINE(spammer, void, ignored) {
 }
 
 int main() {
+  log_init();
   sched_init();
 
   sched_submit(&print_loop, "1");
