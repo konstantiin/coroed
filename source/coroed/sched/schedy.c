@@ -18,7 +18,7 @@
 enum {
   SCHED_THREADS_LIMIT = 512,
   SCHED_WORKERS_COUNT = (size_t)(8),
-  SCHED_NEXT_MAX_ATTEMPTS = (size_t)(4),
+  SCHED_NEXT_MAX_ATTEMPTS = (size_t)(16),
 };
 
 struct task {
@@ -193,7 +193,7 @@ task_t task_submit(struct task* caller, uthread_routine entry, void* argument) {
   return child;
 }
 
-task_t sched_submit(void (*entry)(), void* argument) {
+task_t sched_try_submit(void (*entry)(), void* argument) {
   for (size_t i = 0; i < SCHED_THREADS_LIMIT; ++i) {
     struct task* task = &tasks[i];
 
@@ -223,8 +223,19 @@ task_t sched_submit(void (*entry)(), void* argument) {
     }
   }
 
-  printf("Threads exhausted");
-  exit(1);
+  return (task_t){.task = NULL};
+}
+
+task_t sched_submit(void (*entry)(), void* argument) {
+  for (size_t attempt = 0; attempt < SCHED_NEXT_MAX_ATTEMPTS; ++attempt) {
+    task_t handle = sched_try_submit(entry, argument);
+    if (handle.task != NULL) {
+      return handle;
+    }
+    SPINLOOP(2 * attempt);
+  }
+
+  assert(false && "Can't create a task");
 }
 
 void sched_start() {
