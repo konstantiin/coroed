@@ -8,9 +8,9 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "coroed/api/clock.h"
 #include "coroed/api/event.h"
 #include "coroed/api/log.h"
+#include "coroed/api/sleep.h"
 #include "coroed/api/task.h"
 
 enum {
@@ -25,7 +25,7 @@ static atomic_int_least64_t state = 0;
 static struct event event;
 
 TASK_DEFINE(eventer, void, ignored) {
-  sleep(1);
+  SLEEP(1000);
   state = 1;
   event_fire(&event);
 }
@@ -69,7 +69,7 @@ TASK_DEFINE(print_loop, const char, message) {
     YIELD;
 
     free(msg);
-    clock_delay(delay);
+    SLEEP(delay);
   }
 }
 
