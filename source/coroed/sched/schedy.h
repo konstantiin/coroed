@@ -1,12 +1,13 @@
 #pragma once
 
+#include "coroed/api/task.h"
 #include "uthread.h"
 
 struct task;
 
 void sched_init();
 
-void sched_submit(uthread_routine entry, void* argument);
+task_t sched_submit(uthread_routine entry, void* argument);
 
 void sched_start();
 

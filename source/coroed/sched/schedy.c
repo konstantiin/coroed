@@ -187,12 +187,13 @@ void task_exit(struct task* caller) {
   task_yield(caller);
 }
 
-void task_submit(struct task* caller, uthread_routine entry, void* argument) {
+task_t task_submit(struct task* caller, uthread_routine entry, void* argument) {
   (void)caller;
-  sched_submit(*entry, argument);
+  task_t child = sched_submit(*entry, argument);
+  return child;
 }
 
-void sched_submit(void (*entry)(), void* argument) {
+task_t sched_submit(void (*entry)(), void* argument) {
   for (size_t i = 0; i < SCHED_THREADS_LIMIT; ++i) {
     struct task* task = &tasks[i];
 
@@ -218,7 +219,7 @@ void sched_submit(void (*entry)(), void* argument) {
 
     spinlock_unlock(&task->lock);
     if (is_submitted) {
-      return;
+      return (task_t){.task = task};
     }
   }
 

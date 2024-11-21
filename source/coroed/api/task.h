@@ -2,17 +2,15 @@
 
 #include "coroed/sched/uthread.h"
 
-#define YIELD           \
-  do {                  \
-    task_yield(__self); \
-  } while (false)
+#define YIELD task_yield(__self)
 
-#define GO(entry, argument)                   \
-  do {                                        \
-    task_submit(__self, (entry), (argument)); \
-  } while (false)
+#define GO(entry, argument) task_submit(__self, (entry), (argument))
 
 struct task;
+
+typedef struct {
+  struct task* task;
+} task_t;
 
 typedef uthread_routine task_body;
 
@@ -25,7 +23,7 @@ void tasks_destroy();
 
 void task_yield(struct task* caller);
 void task_exit(struct task* caller);
-void task_submit(struct task* caller, uthread_routine entry, void* argument);
+task_t task_submit(struct task* caller, uthread_routine entry, void* argument);
 
 #define TASK_DECLARE(name, type, argument)                                 \
   void task_body_##name(struct task* __self, type* argument); /* NOLINT */ \
