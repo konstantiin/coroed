@@ -178,17 +178,17 @@ void sched_cancel(struct task* task) {
   task->state = UTHREAD_CANCELLED;
 }
 
-void task_yield(struct task* task) {
-  sched_switch_to_scheduler(task);
+void task_yield(struct task* caller) {
+  sched_switch_to_scheduler(caller);
 }
 
-void task_exit(struct task* task) {
-  sched_cancel(task);
-  task_yield(task);
+void task_exit(struct task* caller) {
+  sched_cancel(caller);
+  task_yield(caller);
 }
 
-void task_submit(struct task* parent, uthread_routine entry, void* argument) {
-  (void)parent;
+void task_submit(struct task* caller, uthread_routine entry, void* argument) {
+  (void)caller;
   sched_submit(*entry, argument);
 }
 

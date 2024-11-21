@@ -23,9 +23,9 @@ void tasks_wait();
 void tasks_print_statistics();
 void tasks_destroy();
 
-void task_yield(struct task* task);
-void task_exit(struct task* task);
-void task_submit(struct task* parent, uthread_routine entry, void* argument);
+void task_yield(struct task* caller);
+void task_exit(struct task* caller);
+void task_submit(struct task* caller, uthread_routine entry, void* argument);
 
 #define TASK_DECLARE(name, type, argument)                                 \
   void task_body_##name(struct task* __self, type* argument); /* NOLINT */ \
