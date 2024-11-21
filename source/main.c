@@ -6,8 +6,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "coroed/api/clock.h"
+#include "coroed/api/event.h"
 #include "coroed/api/log.h"
 #include "coroed/api/task.h"
 
@@ -18,6 +20,22 @@ enum {
 
 static atomic_int_least64_t actual_count = 0;
 static int_least64_t expected_count = 0;
+
+static atomic_int_least64_t state = 0;
+static struct event event;
+
+TASK_DEFINE(eventer, void, ignored) {
+  sleep(1);
+  state = 1;
+  event_fire(&event);
+}
+
+TASK_DEFINE(event_test, void, ignored) {
+  assert(state == 0);
+  GO(eventer, NULL);
+  EVENT_WAIT(&event);
+  assert(state == 1);
+}
 
 TASK_DEFINE(increment, void, ignored) {
   atomic_fetch_add(&actual_count, 1);
@@ -78,6 +96,7 @@ int main() {
   srand(231);  // NOLINT
 
   tasks_submit(&spammer, NULL);
+  tasks_submit(&event_test, NULL);
   add(randint());
   add(randint());
   add(randint());
@@ -94,6 +113,7 @@ int main() {
   tasks_print_statistics();
 
   assert(atomic_load(&actual_count) == expected_count);
+  assert(state == 1);
 
   tasks_destroy();
 
