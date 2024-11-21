@@ -6,11 +6,12 @@
 
 ## Features
 
-- Preemtion
-- Single-threaded executor
+- Fixed thread pool executor
 - Stackfull coroutines
 - Platform: x64
 - Zombie-fibers
+- Event
+- Sleep
 
 ## Reference
 
