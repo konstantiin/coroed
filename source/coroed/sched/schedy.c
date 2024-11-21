@@ -8,9 +8,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <unistd.h>
 
 #include "coroed/api/task.h"
+#include "coroed/core/relax.h"
 #include "coroed/core/spinlock.h"
 #include "kthread.h"
 #include "uthread.h"
@@ -155,7 +155,7 @@ struct task* sched_acquire_next() {
     }
     spinlock_unlock(&tasks_lock);
 
-    sleep(1);
+    SPINLOOP(2 * attempt);
   }
 
   return NULL;

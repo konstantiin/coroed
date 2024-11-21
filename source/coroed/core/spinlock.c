@@ -3,6 +3,8 @@
 #include <assert.h>
 #include <stdatomic.h>
 
+#include "relax.h"
+
 void spinlock_init(struct spinlock* lock) {
   assert(atomic_is_lock_free(&lock->is_locked));
   atomic_store(&lock->is_locked, false);
@@ -10,7 +12,7 @@ void spinlock_init(struct spinlock* lock) {
 
 void spinlock_lock(struct spinlock* lock) {
   while (!spinlock_try_lock(lock)) {
-    // CPU not relax
+    CPU_RELAX();
   }
 }
 
