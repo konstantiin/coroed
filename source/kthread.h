@@ -1,11 +1,6 @@
 #pragma once
 
 #define KTHREAD_STDLIB
-// #define KTHREAD_CLONE
-
-#ifdef KTHREAD_CLONE
-#define _GNU_SOURCE  // NOLINT
-#endif
 
 #include <stdint.h>
 #include <unistd.h>
@@ -37,18 +32,6 @@ kthread_id_t kthread_id();
 
 struct kthread {
   thrd_t thrd;
-};
-
-#endif
-
-#ifdef KTHREAD_CLONE
-
-#define KTHREAD_CLONE_PAGE_SIZE (size_t)(4 * 1024)
-#define KTHREAD_CLONE_STACK_SIZE (size_t)(256 * KTHREAD_CLONE_PAGE_SIZE)
-
-struct kthread {
-  uint8_t* stack;
-  pid_t pid;
 };
 
 #endif

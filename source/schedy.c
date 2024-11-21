@@ -10,15 +10,10 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "interrupt.h"
 #include "kthread.h"
 #include "spinlock.h"
 #include "task.h"
 #include "uthread.h"
-
-#define INTR_ENTER(worker) interrupt_received(&(worker)->interrupt_stack)
-#define INTR_OFF(worker) interrupt_off_push(&(worker)->interrupt_stack)
-#define INTR_ON(worker) interrupt_off_pop(&(worker)->interrupt_stack)
 
 enum {
   SCHED_THREADS_LIMIT = 512,
@@ -41,7 +36,6 @@ struct task {
 struct worker {
   size_t index;
   struct kthread kthread;
-  struct interrupt_stack interrupt_stack;
   struct uthread sched_thread;
   struct task* running_task;
   struct {
@@ -66,7 +60,6 @@ void sched_task_init(struct task* task) {
 
 void sched_worker_init(struct worker* worker, size_t index) {
   worker->index = index;
-  interrupt_stack_init(&worker->interrupt_stack);
   worker->sched_thread.context = NULL;
   worker->running_task = NULL;
   worker->statistics.steps = 0;
@@ -98,8 +91,6 @@ void sched_switch_to(struct worker* worker, struct task* task) {
   task->worker = worker;
   worker->running_task = task;
 
-  INTR_ON(worker);
-
   struct uthread* sched = &worker->sched_thread;
   uthread_switch(sched, task->thread);
 }
@@ -119,15 +110,12 @@ struct worker* sched_worker() {
 
 void sched_preempt() {
   struct worker* worker = sched_worker();
-  INTR_ENTER(worker);
   sched_switch_to_scheduler(worker->running_task);
 }
 
 int sched_loop(void* argument) {
   struct worker* worker = argument;
   kthread_ids[worker->index] = kthread_id();
-
-  interrupt_setup(sched_preempt);
 
   for (;;) {
     struct task* task = sched_acquire_next();
@@ -191,7 +179,6 @@ void sched_cancel(struct task* task) {
 }
 
 void task_yield(struct task* task) {
-  INTR_OFF(task->worker);
   sched_switch_to_scheduler(task);
 }
 
@@ -201,17 +188,8 @@ void task_exit(struct task* task) {
 }
 
 void task_submit(struct task* parent, uthread_routine entry, void* argument) {
-  struct worker* worker = NULL;
-  for (;;) {
-    worker = parent->worker;
-    INTR_OFF(worker);
-    if (worker == parent->worker) {
-      break;
-    }
-  }
-
+  (void)parent;
   sched_submit(*entry, argument);
-  INTR_ON(worker);
 }
 
 void sched_submit(void (*entry)(), void* argument) {
