@@ -10,9 +10,9 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "coroed/api/task.h"
+#include "coroed/core/spinlock.h"
 #include "kthread.h"
-#include "spinlock.h"
-#include "task.h"
 #include "uthread.h"
 
 enum {

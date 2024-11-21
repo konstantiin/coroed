@@ -1,6 +1,6 @@
 #pragma once
 
-#include "uthread.h"
+#include "coroed/sched/uthread.h"
 
 #define YIELD           \
   do {                  \
@@ -13,6 +13,15 @@
   } while (false)
 
 struct task;
+
+typedef uthread_routine task_body;
+
+void tasks_init();
+void tasks_submit(task_body body, void* argument);
+void tasks_start();
+void tasks_wait();
+void tasks_print_statistics();
+void tasks_destroy();
 
 void task_yield(struct task* task);
 void task_exit(struct task* task);

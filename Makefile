@@ -17,7 +17,7 @@ CFLAGS   += $(SANITIZERS)
 
 LDFLAGS   = $(CFLAGS)
 
-SRCS     := $(wildcard $(SRC_DIR)/*.c) $(wildcard $(SRC_DIR)/*.S)
+SRCS     := $(shell find source -iname '*.c') $(shell find source -iname '*.S')
 
 OBJS     := $(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/%.o, $(SRCS))
 OBJS     := $(patsubst $(SRC_DIR)/%.S, $(OBJ_DIR)/%.o, $(OBJS))
@@ -37,9 +37,11 @@ $(BIN_DIR)/$(TARGET): $(BIN_DIR) $(OBJ_DIR) $(OBJS)
 	$(CC) $(OBJS) -o $@ $(LDFLAGS)
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
+	mkdir -p $(shell dirname $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.S
+	mkdir -p $(shell dirname $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(OBJ_DIR): $(BUILD_DIR)

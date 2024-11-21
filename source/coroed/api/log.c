@@ -1,6 +1,6 @@
 #include "log.h"
 
-#include "spinlock.h"
+#include "coroed/core/spinlock.h"
 
 struct spinlock log_lock;
 

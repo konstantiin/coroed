@@ -7,10 +7,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "clock.h"
-#include "log.h"
-#include "schedy.h"
-#include "task.h"
+#include "coroed/api/clock.h"
+#include "coroed/api/log.h"
+#include "coroed/api/task.h"
 
 enum {
   DELAY = 50,
@@ -65,7 +64,7 @@ TASK_DEFINE(spammer, void, ignored) {
 
 void add(int64_t value) {
   expected_count += value;
-  sched_submit(&adder, (void*)(value));
+  tasks_submit(&adder, (void*)(value));
 }
 
 int randint() {
@@ -74,11 +73,11 @@ int randint() {
 
 int main() {
   log_init();
-  sched_init();
+  tasks_init();
 
   srand(231);  // NOLINT
 
-  sched_submit(&spammer, NULL);
+  tasks_submit(&spammer, NULL);
   add(randint());
   add(randint());
   add(randint());
@@ -88,15 +87,15 @@ int main() {
   add(randint());
   add(randint());
 
-  sched_start();
+  tasks_start();
 
-  sched_wait();
+  tasks_wait();
 
-  sched_print_statistics();
+  tasks_print_statistics();
 
   assert(atomic_load(&actual_count) == expected_count);
 
-  sched_destroy();
+  tasks_destroy();
 
   return 0;
 }

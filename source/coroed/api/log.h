@@ -2,7 +2,7 @@
 
 #include <stdio.h>  // NOLINT
 
-#include "spinlock.h"
+#include "coroed/core/spinlock.h"
 
 #define LOG_INFO(message, ...)                   \
   do {                                           \
