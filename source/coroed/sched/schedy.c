@@ -37,6 +37,10 @@ enum {
 
 /**
  * Задача, выполняющаяся на планировщике.
+ *
+ * Hint: также тут можно хранить список задач, ожидающих
+ *       завершения этой, чтобы уведомить их о данном
+ *       событии.
  */
 struct task {
   /**
@@ -212,6 +216,11 @@ int sched_loop(void* argument) {
     }
 
     sched_release(task);
+
+    // Hint: где-то здесь можно было бы опросить
+    //       механизмы для неблокирующего ввода-вывода
+    //       и перевести удовлетворенные BLOCKED
+    //       потоки в RUNNABLE состояние.
   }
 
   return 0;
@@ -251,13 +260,14 @@ struct task* sched_acquire_next() {
 void sched_release(struct task* task) {
   task->worker = NULL;
   if (task->state == UTHREAD_CANCELLED) {
-    // Отправляем задачу на кладбище
+    // Отправляем задачу на кладбище, а могли бы
+    // еще, например, разблокировать зависимые задачи.
     uthread_reset(task->thread);
     task->state = UTHREAD_ZOMBIE;
   } else if (task->state == UTHREAD_RUNNING) {
     task->state = UTHREAD_RUNNABLE;
-  } else {
-    assert(false);
+  } else /* if (task->state == UTHREAD_BLOCKED) */ {
+    assert(false && "Not implemented");
   }
   spinlock_unlock(&task->lock);
 }

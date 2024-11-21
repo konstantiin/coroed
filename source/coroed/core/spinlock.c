@@ -11,6 +11,8 @@ void spinlock_init(struct spinlock* lock) {
 }
 
 void spinlock_lock(struct spinlock* lock) {
+  // Как можно улучшить данный спинлок?
+
   while (!spinlock_try_lock(lock)) {
     CPU_RELAX();
   }
