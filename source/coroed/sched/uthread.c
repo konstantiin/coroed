@@ -6,12 +6,26 @@
 #include <string.h>
 #include <sys/mman.h>
 
-#define PAGE_SIZE (size_t)(4 * 1024)
+/**
+ * Размер страницы виртуальной памяти.
+ */
+#define PAGE_SIZE (size_t)(4 * 1024)  // 4 KB
+
+/**
+ * Размер памяти, выделяемой под поток.
+ */
 #define THREAD_SIZE (size_t)(256 * PAGE_SIZE)
+
+/**
+ * Размер памяти, выделяемой под стек потока,
+ * Отступаем 8 страниц для безопасности.
+ */
 #define STACK_SIZE (size_t)(THREAD_SIZE - 8 * PAGE_SIZE)
 
+/**
+ * Сохраняемые callee-saved регистры.
+ */
 struct [[gnu::packed]] switch_frame {
-  // Callee-saved registers
   uint64_t r15;
   uint64_t r14;
   uint64_t r13;
@@ -26,6 +40,10 @@ struct switch_frame* uthread_frame(struct uthread* thread) {
 }
 
 void uthread_switch(struct uthread* prev, struct uthread* next) {
+  // Сохраняем лишь callee-saved регистры в `switch.S`, так как
+  // caller-saved регистры будут сохранены компилятором, ведь
+  // мы вызываем функцию.
+
   void __switch_threads(void** prev, void* next);  // NOLINT
   __switch_threads(&prev->context, next->context);
 }

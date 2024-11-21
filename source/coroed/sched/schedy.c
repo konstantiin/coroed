@@ -16,41 +16,108 @@
 #include "uthread.h"
 
 enum {
+  /**
+   * Максимальное количество файберов, которое может
+   * одновременно выполняться на планировщике.
+   */
   SCHED_THREADS_LIMIT = 512,
+
+  /**
+   * Количество рабочих потоков для исполнения файберов.
+   */
   SCHED_WORKERS_COUNT = (size_t)(8),
+
+  /**
+   * Обеспечивает костыль для ретрая операций
+   * `submit` и `acquire_next` при высокой
+   * конкуренции на спинлоках файберов.
+   */
   SCHED_NEXT_MAX_ATTEMPTS = (size_t)(16),
 };
 
+/**
+ * Задача, выполняющаяся на планировщике.
+ */
 struct task {
+  /**
+   * Контекст исполнения.
+   */
   struct uthread* thread;
+
+  /**
+   * Установлен при `UTHREAD_RUNNING`. Указывает на
+   * рабочий поток, на котором исполняется задача.
+   * Необходим для получения контекста локального
+   * планировщика при операциях `yield`, `await`, `submit`.
+   */
   struct worker* worker;
+
   enum {
+    /** Готова к исполнению. */
     UTHREAD_RUNNABLE,
+
+    /** Прямо сейчас выполняется. */
     UTHREAD_RUNNING,
+
+    /** Завершена и скоро станет зомби. */
     UTHREAD_CANCELLED,
+
+    /** Отработала и может быть переиспользования. */
     UTHREAD_ZOMBIE,
-  } state;
+  } state;  // Текущее состояние задачи
+
+  /**
+   * Защищает поля структуры от неупорядоченного доступа.
+   */
   struct spinlock lock;
 };
 
+/**
+ * Рабочий поток, исполняющий файберы.
+ */
 struct worker {
+  /**
+   * Идентификатор рабочего потока.
+   */
   size_t index;
+
+  /**
+   * Поток операционной системы, на котором
+   * исполняется рабочий.
+   */
   struct kthread kthread;
+
+  /**
+   * Контекст планировщика. Нужно переключиться на него,
+   * чтобы вернуться в планировщик.
+   */
   struct uthread sched_thread;
+
+  /**
+   * В данный момент исполняемая на рабочем
+   * задача. Может быть `NULL`.
+   */
   struct task* running_task;
+
   struct {
-    size_t steps;
-    size_t cancelled;
-  } statistics;
+    size_t steps;      // Сколько шагов было выполнено
+    size_t cancelled;  // Сколько задач было завершено
+  } statistics;        // Локальная статистика работяги
 };
 
-static struct spinlock tasks_lock;
-static size_t next_task_index = 0;
-static struct task tasks[SCHED_THREADS_LIMIT];
+static struct spinlock tasks_lock;              // Защищает список задач
+static size_t next_task_index = 0;              // Для планирования round-robin
+static struct task tasks[SCHED_THREADS_LIMIT];  // Список всех задач
+
+// Hint: для реализации более сложных схем управления, вам
+//       вам могут понадобиться связаные списки (`core/list.h`).
 
 static kthread_id_t kthread_ids[SCHED_WORKERS_COUNT];
 static struct worker workers[SCHED_WORKERS_COUNT];
 
+/**
+ * Установить задачу в пустое состояние.
+ */
 void sched_task_init(struct task* task) {
   task->thread = NULL;
   task->worker = NULL;
@@ -58,6 +125,9 @@ void sched_task_init(struct task* task) {
   spinlock_init(&task->lock);
 }
 
+/**
+ * Установить рабочего в пустое состояние.
+ */
 void sched_worker_init(struct worker* worker, size_t index) {
   worker->index = index;
   worker->sched_thread.context = NULL;
@@ -77,12 +147,21 @@ void sched_init() {
   }
 }
 
+/**
+ * Находясь в контексте задачи `task`, переключиться
+ * в контекст планировщика.
+ */
 void sched_switch_to_scheduler(struct task* task) {
   struct uthread* sched = &task->worker->sched_thread;
   task->worker = NULL;
   uthread_switch(task->thread, sched);
 }
 
+/**
+ * Находясь в контексте планировщика, переключиться
+ * в контекст задачи `task`. Выполнять ее до следующего
+ * невынужденного возвращения в планировщик.
+ */
 void sched_switch_to(struct worker* worker, struct task* task) {
   assert(task->thread != &worker->sched_thread);
 
@@ -95,24 +174,26 @@ void sched_switch_to(struct worker* worker, struct task* task) {
   uthread_switch(sched, task->thread);
 }
 
+/**
+ * Получить следующую задачу на исполнение в
+ * соответствии с текущим алгоритмом планирования.
+ *
+ * Вызывающему передается владение задачей, а также
+ * захваченный лок `task->lock`.
+ */
 struct task* sched_acquire_next();
+
+/**
+ * Вернуть задачу в очередь планирования.
+ *
+ * Очереди передается владение задачей,
+ * а также она отпустит лок `task->lock`.
+ */
 void sched_release(struct task* task);
 
-struct worker* sched_worker() {
-  kthread_id_t tid = kthread_id();
-  for (size_t i = 0; i < SCHED_WORKERS_COUNT; ++i) {
-    if (kthread_ids[i] == tid) {
-      return &workers[i];
-    }
-  }
-  return NULL;
-}
-
-void sched_preempt() {
-  struct worker* worker = sched_worker();
-  sched_switch_to_scheduler(worker->running_task);
-}
-
+/**
+ * Цикл планировщика. Выполняется, пока есть задачи.
+ */
 int sched_loop(void* argument) {
   struct worker* worker = argument;
   kthread_ids[worker->index] = kthread_id();
@@ -137,15 +218,21 @@ int sched_loop(void* argument) {
 }
 
 struct task* sched_acquire_next() {
+  // На всякий случай пытаемся найти задачу несколько раз,
+  // так как какие-то `task->lock` могли быть отпущены.
+
   for (size_t attempt = 0; attempt < SCHED_NEXT_MAX_ATTEMPTS; ++attempt) {
-    spinlock_lock(&tasks_lock);
+    spinlock_lock(&tasks_lock);  // Защитим `next_task_index`
+
     for (size_t i = 0; i < SCHED_THREADS_LIMIT; ++i) {
       struct task* task = &tasks[next_task_index];
       if (!spinlock_try_lock(&task->lock)) {
         continue;
       }
 
+      // Планирование round-robin
       next_task_index = (next_task_index + 1) % SCHED_THREADS_LIMIT;
+
       if (task->thread != NULL && task->state == UTHREAD_RUNNABLE) {
         spinlock_unlock(&tasks_lock);
         return task;
@@ -153,8 +240,8 @@ struct task* sched_acquire_next() {
 
       spinlock_unlock(&task->lock);
     }
-    spinlock_unlock(&tasks_lock);
 
+    spinlock_unlock(&tasks_lock);
     SPINLOOP(2 * attempt);
   }
 
@@ -164,6 +251,7 @@ struct task* sched_acquire_next() {
 void sched_release(struct task* task) {
   task->worker = NULL;
   if (task->state == UTHREAD_CANCELLED) {
+    // Отправляем задачу на кладбище
     uthread_reset(task->thread);
     task->state = UTHREAD_ZOMBIE;
   } else if (task->state == UTHREAD_RUNNING) {
@@ -174,6 +262,9 @@ void sched_release(struct task* task) {
   spinlock_unlock(&task->lock);
 }
 
+/**
+ * Отметить задачу завершенной.
+ */
 void sched_cancel(struct task* task) {
   task->state = UTHREAD_CANCELLED;
 }
@@ -188,7 +279,7 @@ void task_exit(struct task* caller) {
 }
 
 task_t task_submit(struct task* caller, uthread_routine entry, void* argument) {
-  (void)caller;
+  (void)caller;  // Может быть полезно.
   task_t child = sched_submit(*entry, argument);
   return child;
 }
