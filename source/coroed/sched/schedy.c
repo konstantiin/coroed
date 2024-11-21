@@ -64,7 +64,7 @@ struct task {
     UTHREAD_RUNNING,
 
     /** Завершена и скоро станет зомби. */
-    UTHREAD_CANCELLED,
+    UTHREAD_FINISHED,
 
     /** Отработала и может быть переиспользования. */
     UTHREAD_ZOMBIE,
@@ -104,9 +104,9 @@ struct worker {
   struct task* running_task;
 
   struct {
-    size_t steps;      // Сколько шагов было выполнено
-    size_t cancelled;  // Сколько задач было завершено
-  } statistics;        // Локальная статистика работяги
+    size_t steps;     // Сколько шагов было выполнено
+    size_t finished;  // Сколько задач было завершено
+  } statistics;       // Локальная статистика работяги
 };
 
 static struct spinlock tasks_lock;              // Защищает список задач
@@ -137,7 +137,7 @@ void sched_worker_init(struct worker* worker, size_t index) {
   worker->sched_thread.context = NULL;
   worker->running_task = NULL;
   worker->statistics.steps = 0;
-  worker->statistics.cancelled = 0;
+  worker->statistics.finished = 0;
 }
 
 void sched_init() {
@@ -211,8 +211,8 @@ int sched_loop(void* argument) {
     sched_switch_to(worker, task);
 
     worker->statistics.steps += 1;
-    if (task->state == UTHREAD_CANCELLED) {
-      worker->statistics.cancelled += 1;
+    if (task->state == UTHREAD_FINISHED) {
+      worker->statistics.finished += 1;
     }
 
     sched_release(task);
@@ -259,7 +259,7 @@ struct task* sched_acquire_next() {
 
 void sched_release(struct task* task) {
   task->worker = NULL;
-  if (task->state == UTHREAD_CANCELLED) {
+  if (task->state == UTHREAD_FINISHED) {
     // Отправляем задачу на кладбище, а могли бы
     // еще, например, разблокировать зависимые задачи.
     uthread_reset(task->thread);
@@ -275,8 +275,8 @@ void sched_release(struct task* task) {
 /**
  * Отметить задачу завершенной.
  */
-void sched_cancel(struct task* task) {
-  task->state = UTHREAD_CANCELLED;
+void sched_finish(struct task* task) {
+  task->state = UTHREAD_FINISHED;
 }
 
 void task_yield(struct task* caller) {
@@ -284,7 +284,7 @@ void task_yield(struct task* caller) {
 }
 
 void task_exit(struct task* caller) {
-  sched_cancel(caller);
+  sched_finish(caller);
   task_yield(caller);
 }
 
@@ -362,7 +362,7 @@ void sched_print_statistics() {
   size_t steps_count = 0;
   for (size_t i = 0; i < SCHED_WORKERS_COUNT; ++i) {
     struct worker* worker = &workers[i];
-    tasks_count += worker->statistics.cancelled;
+    tasks_count += worker->statistics.finished;
     steps_count += worker->statistics.steps;
   }
 
@@ -373,7 +373,7 @@ void sched_print_statistics() {
     struct worker* worker = &workers[i];
     printf("|- worker %zu %zu\n", i, kthread_ids[i]);
     printf("   |- steps     %zu\n", worker->statistics.steps);
-    printf("   |- cancelled %zu\n", worker->statistics.cancelled);
+    printf("   |- finished  %zu\n", worker->statistics.finished);
   }
 }
 
