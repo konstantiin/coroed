@@ -3,6 +3,7 @@
 #include <stdatomic.h>
 
 #include "coroed/api/task.h"
+#include "coroed/core/spinlock.h"
 
 /**
  * Синтаксический сахар для использования в теле файбера.
@@ -19,7 +20,9 @@
  * Пример использования ищите в `test_event.c`.
  */
 struct event {
-  atomic_bool is_fired;
+  int is_fired;
+  struct task* task;
+  struct spinlock lock;
 };
 
 /**

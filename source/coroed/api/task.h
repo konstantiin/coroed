@@ -86,6 +86,14 @@ void task_yield(struct task* caller);
 void task_exit(struct task* caller);
 
 /**
+ * Заблокировать файбер.
+ */
+void task_block(struct task* caller, int fd);
+
+void insert_blocked_task(struct task* new_task, struct task* queue);
+
+void task_unblock_queue(struct task* task);
+/**
  * Создать дочерний файбер.
  */
 task_t task_submit(struct task* caller, uthread_routine entry, void* argument);
@@ -115,3 +123,7 @@ task_t task_submit(struct task* caller, uthread_routine entry, void* argument);
   }                                            \
                                                \
   void task_body_##name(struct task* __self, type* argument) /* NOLINT */
+
+void sched_print_stats();
+
+void sched_print_dump_stats();

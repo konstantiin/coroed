@@ -1,12 +1,14 @@
 #include "event.h"
 
-#include <stdatomic.h>
-#include <stdbool.h>
+#include <stddef.h>
 
-#include "task.h"
+#include "coroed/api/task.h"
+#include "coroed/core/spinlock.h"
 
 void event_init(struct event* event) {
-  atomic_store(&event->is_fired, false);
+  event->is_fired = false;
+  event->task = NULL;
+  spinlock_init(&event->lock);
 }
 
 void event_wait(struct task* caller, struct event* event) {
@@ -15,12 +17,18 @@ void event_wait(struct task* caller, struct event* event) {
   // алгоритмов планирования (например, FIFO). Для решения этой
   // проблемы следует "парковать" файбер в планировщике, отправляя
   // его в а-ля BLOCKED состояние.
-
-  while (!atomic_load(&event->is_fired)) {
-    task_yield(caller);
+  spinlock_lock(&event->lock);
+  if (!event->is_fired) {
+    insert_blocked_task(caller, event->task);
+    event->task = caller;
   }
+  spinlock_unlock(&event->lock);
+  task_yield(caller);
 }
 
 void event_fire(struct event* event) {
-  atomic_store(&event->is_fired, true);
+  spinlock_lock(&event->lock);
+  event->is_fired = true;
+  task_unblock_queue(event->task);
+  spinlock_unlock(&event->lock);
 }
